@@ -1,271 +1,250 @@
-# Futures Intraday Almanac
-
-A sophisticated futures market analysis tool that provides comprehensive intraday almanac data, developed by Hughes & Company LLC. This advanced platform offers detailed statistical analysis of futures market behavior across different timeframes, enabling traders to identify patterns and optimize their trading strategies.
+# Almanac Futures v2.0 - Intraday Pattern Analysis
 
 ## Overview
+This application analyzes historical intraday patterns in futures contracts to identify repeatable behaviors based on previous day conditions and time-of-day statistics.
 
-The Futures Intraday Almanac is a professional-grade analytical tool that examines futures market behavior through advanced statistical analysis. It provides detailed insights into hourly and minute-level market patterns, volatility characteristics, and trading opportunities based on historical data analysis. The system supports multiple futures contracts and offers extensive filtering capabilities for customized analysis.
+**Version 2.0** features a complete architectural refactoring with modular structure, improved data validation, caching, and comprehensive test coverage.
 
-## Features
+## Quick Start
 
-### 🚀 **Advanced Market Analysis**
-- **Multi-Timeframe Analysis**: Hourly and minute-level statistical breakdowns
-- **Futures Contract Support**: ES (E-mini S&P 500), NQ (E-mini NASDAQ), GC (Gold)
-- **Historical Data Integration**: SQL Server database connectivity for comprehensive data
-- **Real-time Calculations**: Dynamic statistical analysis and visualization
-
-### 📊 **Comprehensive Statistical Metrics**
-- **Price Change Analysis**: Percentage change and range statistics
-- **Volatility Measurement**: Variance analysis across time periods
-- **Volume Analysis**: Relative volume comparisons and thresholds
-- **Pattern Recognition**: Day-of-week and market condition patterns
-
-### 🎯 **Advanced Filtering System**
-- **Weekday Filters**: Monday through Friday specific analysis
-- **Previous Day Conditions**: Open/close and percentage change filters
-- **Volume Thresholds**: Relative volume comparison filters
-- **Time-based Filters**: Specific time period analysis
-- **Extreme Value Trimming**: Top/bottom 5% exclusion options
-
-### 📈 **Interactive Visualizations**
-- **Hourly Charts**: Average and variance charts for price changes and ranges
-- **Minute Charts**: Detailed minute-level statistical analysis
-- **Dynamic Updates**: Real-time chart updates based on filter changes
-- **Professional Dashboard**: Clean, trading-focused interface
-
-## Installation
-
-### Prerequisites
-- Python 3.8+
-- SQL Server with HistoricalData database
-- ODBC Driver 17 for SQL Server
-- pip package manager
-
-### Setup Instructions
-
-1. **Clone the repository:**
-```bash
-git clone https://github.com/klefebvre6/almanac.git
-cd almanac
-```
-
-2. **Install dependencies:**
+### 1. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-3. **Configure database connection:**
-Update the `DB_CONN_STRING` in `Almanac_main.py` to match your SQL Server setup.
-
-4. **Run the application:**
+### 2. Run the Application
 ```bash
-python Almanac_main.py
+python run.py
 ```
 
-5. **Access the dashboard:**
-Open your browser and navigate to `http://localhost:8085`
-
-## Project Structure
-
-```
-Almanac Futures/
-├── Almanac_main.py                  # Main almanac analysis application (16KB)
-├── reboot_almanac.bat               # Windows service restart script
-├── requirements.txt                  # Python dependencies
-├── README.md                         # This documentation
-└── .gitignore                        # Git ignore rules
+Or with custom settings:
+```bash
+python run.py --port 8086 --no-debug
 ```
 
-## Key Components
+The application will be available at: `http://127.0.0.1:8085`
 
-### **Almanac_main.py** - Main Application
-- **Dash Web Framework**: Modern, responsive web interface
-- **SQL Server Integration**: Direct database connectivity for historical data
-- **Statistical Engine**: Advanced mathematical calculations and analysis
-- **Interactive Controls**: Dynamic filtering and parameter adjustment
-- **Professional UI**: Trading-focused dashboard design
+### 3. Run Tests
+```bash
+pytest tests/
+```
 
-### **Supported Futures Contracts**
-- **ES**: E-mini S&P 500 Futures
-- **NQ**: E-mini NASDAQ-100 Futures
+---
+
+## Features
+
+### Core Analysis
+- **Hourly Statistics**: Average and variance of returns and ranges by hour
+- **Minute Statistics**: Drill-down analysis for specific hours
+- **Conditional Filtering**: Previous day metrics, weekday selection, volume filters
+- **HOD/LOD Detection**: High-of-day and low-of-day timing analysis
+- **Time Comparisons**: Filter based on price relationships at specific times
+
+### Data Quality
+- ✅ Trading calendar with holiday handling
+- ✅ Data validation (nulls, duplicates, OHLC relationships)
+- ✅ Extreme outlier detection and trimming
+- ✅ Missing data gap reporting
+
+### Performance
+- ✅ Flask-caching for fast repeated queries
+- ✅ Database connection pooling
+- ✅ Efficient filtering pipeline
+
+### Testing
+- ✅ Comprehensive pytest suite
+- ✅ Mock fixtures for database-free testing
+- ✅ Edge case coverage
+
+---
+
+## Architecture
+
+The application follows a clean, modular architecture:
+
+```
+almanac/
+├── data_sources/    # Database loaders with validation
+├── features/        # Statistical computations & filtering
+├── viz/             # Plotly figure factory functions
+└── pages/           # Dash UI layouts & callbacks
+```
+
+**See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed documentation.**
+
+---
+
+## Usage Guide
+
+### Product Selection
+Choose from:
+- **ES**: E-mini S&P 500
+- **NQ**: E-mini Nasdaq 100
 - **GC**: Gold Futures
 
-### **Analysis Capabilities**
-- **Intraday Patterns**: Hour-by-hour market behavior analysis
-- **Minute-level Detail**: Granular statistical breakdowns
-- **Volume Analysis**: Relative volume and threshold comparisons
-- **Pattern Recognition**: Day-of-week and market condition patterns
+### Date Range
+Select start and end dates for the analysis period.
 
-## Usage
+### Filters
 
-### **Dashboard Interface**
+#### Previous Day Conditions
+- **Close > Open / Close < Open**: Filter by previous day direction
+- **%∆ Thresholds**: Set percentage change requirements (e.g., "previous day up >1%")
+- **Relative Volume**: Filter by volume relative to 10-day average
 
-1. **Product Selection**: Choose from ES, NQ, or GC futures
-2. **Date Range**: Set start and end dates for analysis
-3. **Time Selection**: Choose specific hours for minute-level analysis
-4. **Filter Configuration**: Apply various market condition filters
-5. **Threshold Settings**: Set volume and percentage change thresholds
-6. **Time Comparisons**: Configure time A vs. time B analysis
+#### Weekday Selection
+Analyze specific days of the week (e.g., "only Tuesdays")
 
-### **Filter Options**
+#### Time Comparisons
+Compare prices at two specific times to filter for intraday patterns
+- Example: "Days when 9:45 price > 10:15 price"
 
-- **Weekday Filters**: Monday, Tuesday, Wednesday, Thursday, Friday
-- **Previous Day Conditions**: Positive/negative close vs. open
-- **Percentage Thresholds**: Previous day change percentage filters
-- **Volume Filters**: Relative volume above/below thresholds
-- **Time Comparisons**: Time A vs. Time B price comparisons
-- **Extreme Value Trimming**: Exclude top/bottom 5% of data
+#### Extreme Trimming
+Exclude the top and bottom 5% of returns and ranges to focus on typical behavior
 
-### **Statistical Output**
+### Output Charts
 
-- **Hourly Statistics**: Average and variance for price changes and ranges
-- **Minute Statistics**: Detailed minute-level breakdowns
-- **Summary Information**: Comprehensive analysis overview
-- **Filter Results**: Detailed breakdown of filtered data
+**Hourly Statistics:**
+1. Average % Change by hour
+2. Variance of % Change by hour
+3. Average Range by hour
+4. Variance of Range by hour
 
-## Technical Specifications
+**Minute Statistics (for selected hour):**
+5. Average % Change by minute
+6. Variance of % Change by minute
+7. Average Range by minute
+8. Variance of Range by minute
 
-### **Dependencies**
-- **Dash**: Web framework for interactive dashboards
-- **Pandas**: Data manipulation and analysis
-- **SQLAlchemy**: Database ORM and connection management
-- **Plotly**: Interactive charting library
-- **pyodbc**: SQL Server connectivity
+**Summary Panel:**
+- Date range metrics (open, close, change)
+- Total days and green/red day distribution
+- Filtered data statistics
+- Scaled variance metrics
 
-### **Port Configuration**
-- **Default Port**: 8085
-- **Development Mode**: Debug enabled for development
-- **Host**: Localhost (127.0.0.1)
+---
 
-### **Performance Features**
-- **Efficient Data Processing**: Optimized SQL queries and calculations
-- **Real-time Analysis**: Dynamic statistical computation
-- **Responsive Design**: Mobile-friendly interface
-- **Fast Loading**: Minimal dependencies for quick startup
+## Database Requirements
 
-## Data Sources
+### Connection
+The application connects to the RESEARCH database on SQL Server.
 
-### **Database Integration**
-- **SQL Server**: Primary database platform
-- **Historical Data**: Comprehensive futures market data
-- **Intraday Data**: 1-minute resolution price and volume data
-- **Daily Data**: End-of-day summary statistics
+**Ensure you have:**
+- ODBC Driver 17 for SQL Server installed
+- Proper database access credentials
+- Network access to the database server
 
-### **Data Types**
-- **Price Data**: Open, high, low, close prices
-- **Volume Data**: Trading volume and relative volume analysis
-- **Time Data**: Hourly and minute-level timestamps
-- **Statistical Data**: Variance and average calculations
+### Required Indexes (for performance)
+```sql
+CREATE INDEX idx_raw_time_product 
+  ON RawIntradayData(contract_id, interval, time);
 
-## Statistical Methodology
+CREATE INDEX idx_daily_product 
+  ON DailyData(contract_id, time);
+```
 
-### **Calculation Methods**
-- **Percentage Changes**: (Close - Open) / Open calculations
-- **Range Analysis**: High - Low price ranges
-- **Variance Scaling**: Scientific notation scaling for large variances
-- **Extreme Trimming**: 5th and 95th percentile exclusions
+### Tables Used
+- `dbo.RawIntradayData`: 1-minute OHLCV data
+- `dbo.DailyData`: Daily OHLCV data
 
-### **Filtering Logic**
-- **Weekday Selection**: Day-of-week specific filtering
-- **Previous Day Analysis**: Market condition-based filtering
-- **Volume Thresholds**: Relative volume comparison filtering
-- **Time-based Comparisons**: Specific time period analysis
-
-## Trading Applications
-
-### **Pattern Recognition**
-- **Intraday Patterns**: Hour-by-hour market behavior identification
-- **Volatility Analysis**: Time-based volatility pattern recognition
-- **Volume Patterns**: Trading volume pattern analysis
-- **Day-of-Week Effects**: Weekly pattern identification
-
-### **Strategy Development**
-- **Entry Timing**: Optimal entry time identification
-- **Risk Management**: Volatility-based risk assessment
-- **Position Sizing**: Volume-based position sizing
-- **Market Timing**: Pattern-based market timing strategies
-
-## Performance Features
-
-### **Efficient Algorithms**
-- **Optimized Queries**: Efficient SQL database queries
-- **Vectorized Operations**: Fast NumPy and Pandas calculations
-- **Memory Management**: Efficient data handling and processing
-- **Real-time Updates**: Live statistical analysis updates
-
-### **User Experience**
-- **Interactive Controls**: Dynamic parameter adjustments
-- **Visual Feedback**: Comprehensive chart visualizations
-- **Responsive Interface**: Professional trading dashboard
-- **Mobile Compatibility**: Cross-device accessibility
+---
 
 ## Development
 
-### **Code Structure**
-- **Modular Design**: Separated concerns for maintainability
-- **Clean Architecture**: Clear separation of UI and business logic
-- **Error Handling**: Comprehensive error handling and validation
-- **Professional Standards**: Production-ready code quality
+### Running Tests
+```bash
+# Run all tests
+pytest tests/
 
-### **Extensibility**
-- **Additional Contracts**: Easy to add new futures contracts
-- **New Metrics**: Framework for additional statistical measures
-- **Data Sources**: Pluggable data provider architecture
-- **UI Components**: Reusable Dash components
+# Verbose output
+pytest tests/ -v
 
-## Testing
+# With coverage report
+pytest tests/ --cov=almanac --cov-report=html
+```
 
-### **Quality Assurance**
-- **Data Validation**: Market data integrity checks
-- **Calculation Accuracy**: Statistical algorithm verification
-- **Performance Testing**: Load and response time analysis
-- **User Interface**: Cross-browser compatibility testing
+### Code Formatting
+```bash
+# Format code
+black almanac/
 
-### **Error Handling**
-- **Database Failures**: Graceful handling of connection issues
-- **Calculation Errors**: Robust error handling and recovery
-- **User Input Validation**: Input parameter validation
-- **Fallback Mechanisms**: Alternative calculation methods
+# Check linting
+flake8 almanac/
+```
 
-## Configuration
+### Project Structure
+```
+Almanac Futures/
+├── almanac/              # Main package
+│   ├── data_sources/     # Data loading & validation
+│   ├── features/         # Statistics & filtering
+│   ├── viz/              # Visualization
+│   └── pages/            # UI components
+├── tests/                # Test suite
+├── .cache/               # Caching directory (auto-created)
+├── run.py                # Application launcher
+├── requirements.txt      # Python dependencies
+├── pytest.ini            # Test configuration
+├── ARCHITECTURE.md       # Detailed architecture docs
+└── README.md             # This file
+```
 
-### **Environment Variables**
-- **Database Connection**: SQL Server connection string
-- **Port Configuration**: Application port settings
-- **Debug Mode**: Development vs. production settings
-- **Host Configuration**: Network access settings
+---
 
-### **Customization Options**
-- **Contract Selection**: Configurable futures contract support
-- **Filter Options**: Customizable filtering capabilities
-- **Statistical Measures**: Additional calculation options
-- **UI Themes**: Customizable interface appearance
+## Troubleshooting
 
-## Security Features
+### "No data found" Error
+- **Check:** Product code spelling (ES, NQ, GC)
+- **Check:** Date range has available data
+- **Check:** Database connection and permissions
 
-### **Data Protection**
-- **Secure Database Access**: Protected database connections
-- **Input Validation**: User input sanitization and validation
-- **Access Control**: Network access restrictions
-- **Error Handling**: Secure error message handling
+### Slow Performance
+- **Solution:** Add database indexes (see above)
+- **Solution:** Reduce date range (<3 months for minute data)
+- **Solution:** Clear cache: delete `.cache/` directory
 
-### **Network Security**
-- **Localhost Binding**: Restricted network access
-- **Port Configuration**: Configurable port settings
-- **Development Mode**: Debug mode controls
-- **Access Logging**: Comprehensive access monitoring
+### Test Failures
+- **Missing scipy:** Some statistical tests require `scipy`
+- **Database mocks:** Integration tests use mocks by default
+
+---
+
+## Roadmap
+
+### Phase 1 (Current - v2.0)
+- ✅ Modular architecture
+- ✅ Data validation & quality checks
+- ✅ Trading calendar integration
+- ✅ Flask-caching
+- ✅ Comprehensive test suite
+
+### Phase 2 (Next)
+- [ ] HOD/LOD survival curves and heatmaps
+- [ ] Export functionality (CSV, PNG)
+- [ ] Shareable URLs with query parameters
+- [ ] Preset save/load
+
+### Phase 3 (Future)
+- [ ] Cross-asset correlation analysis
+- [ ] Event calendar integration (CPI, NFP, FOMC)
+- [ ] Strategy sandbox (simple backtests)
+- [ ] ML classification (day archetype prediction)
+
+**See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed roadmap.**
+
+---
+
+## Contributing
+
+1. Write tests for new features
+2. Follow PEP 8 style guidelines
+3. Update documentation
+4. Run test suite before committing
+
+---
 
 ## License
 
-This project is proprietary to Hughes & Company LLC. All rights reserved.
-
-## Contact
-
-For questions, support, or collaboration opportunities:
-- **Company**: Hughes & Company LLC
-- **Email**: dhughes@hughesandco.ltd
-- **Website**: www.hughesandco.ltd
-
-## Disclaimer
-
-This software is for educational and informational purposes only. It does not constitute investment advice. Trading futures involves substantial risk of loss and is not suitable for all investors. Past performance is not indicative of future results. The almanac analysis should be used as part of a comprehensive trading strategy and risk management plan.
+**Version:** 2.0.0  
+**Author:** Trading Research Team  
+**License:** Internal Use Only

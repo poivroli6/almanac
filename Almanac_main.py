@@ -375,4 +375,4 @@ def update_graphs(n, prod, start, end, mh, filters, vol_thr, pct_thr,
     )
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=8085, debug=True)
+    app.run(host='127.0.0.1', port=8072, debug=False)

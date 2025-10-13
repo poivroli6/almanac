@@ -19,20 +19,11 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
 
-# Virtual environments
-.venv/
-.venv13/
+# Virtual Environments
 venv/
 ENV/
 env/
-env.bak/
-venv.bak/
-
-# Logs
-*.log
-*.log.*
 
 # IDE
 .vscode/
@@ -41,46 +32,27 @@ venv.bak/
 *.swo
 *~
 
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Caching
+.cache/
+*.cache
+
+# Dash
+assets/.webassets-cache
+
+# Logs
+*.log
+web_app.log
+
 # OS
 .DS_Store
 Thumbs.db
 
-# Temporary files
-*.tmp
-*.temp
-
-# Python cache
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# Data files (large files that shouldn't be in repo)
-*.csv
-*.xlsx
-*.xls
-*.parquet
-*.h5
-*.hdf5
-
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-
-# Jupyter notebooks
-*.ipynb
-.ipynb_checkpoints/
-
-# Cache directories
-.cache/
-cache/
-
-# Database connection strings (sensitive)
-*connection*
-*conn*
-*db_*
+# Project Specific
+Almanac_main_backup.py
+*.bak

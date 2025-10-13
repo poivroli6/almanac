@@ -1,0 +1,185 @@
+"""
+Daily Data Loader
+
+Loads and processes daily OHLCV data from files or database.
+"""
+
+import pandas as pd
+from typing import Optional
+from datetime import datetime
+
+try:
+    from sqlalchemy import text
+    HAS_SQLALCHEMY = True
+except ImportError:
+    HAS_SQLALCHEMY = False
+
+from .file_loader import load_daily_data_from_file
+
+
+def load_daily_data(
+    product: str,
+    start_date: str | datetime,
+    end_date: str | datetime,
+    add_derived_fields: bool = True,
+    use_files: bool = True
+) -> pd.DataFrame:
+    """
+    Load daily OHLCV data from files or database.
+    
+    Tries file-based loading first, falls back to database if files not available.
+    
+    Args:
+        product: Contract ID (e.g., 'ES', 'NQ', 'GC')
+        start_date: Start date (YYYY-MM-DD or datetime)
+        end_date: End date (YYYY-MM-DD or datetime)
+        add_derived_fields: Whether to add derived fields (date, rolling volumes, etc.)
+        use_files: Whether to try loading from files first (default True)
+        
+    Returns:
+        DataFrame with columns: time, open, high, low, close, volume, date
+        
+    Raises:
+        ValueError: If no data found
+    """
+    # Try file-based loading first
+    if use_files:
+        try:
+            return load_daily_data_from_file(product, start_date, end_date, add_derived_fields)
+        except Exception as e:
+            print(f"File loading failed, trying database: {e}")
+    
+    # Fallback to database
+    if not HAS_SQLALCHEMY:
+        raise ImportError(
+            "SQLAlchemy is required for database fallback. "
+            "Install it with: pip install sqlalchemy pyodbc"
+        )
+    
+    from .db_config import get_engine
+    engine = get_engine()
+    
+    # Convert dates to strings if needed
+    if isinstance(start_date, datetime):
+        start_date = start_date.strftime("%Y-%m-%d")
+    if isinstance(end_date, datetime):
+        end_date = end_date.strftime("%Y-%m-%d")
+    
+    sql = text("""
+        SELECT [time], [open], [high], [low], [close], [volume]
+        FROM dbo.DailyData
+        WHERE contract_id = :prod
+          AND [time] BETWEEN :start AND :end
+        ORDER BY [time]
+    """)
+    
+    df = pd.read_sql(
+        sql,
+        engine,
+        params={
+            'prod': product,
+            'start': f"{start_date} 00:00:00",
+            'end': f"{end_date} 23:59:59"
+        },
+        parse_dates=['time']
+    )
+    
+    if df.empty:
+        raise ValueError(
+            f"No daily data found for {product} between {start_date} and {end_date}"
+        )
+    
+    # Add date field
+    df['date'] = df['time'].dt.date
+    
+    if add_derived_fields:
+        df = _add_derived_fields(df)
+    
+    # Return only useful columns
+    base_cols = ['date', 'open', 'high', 'low', 'close', 'volume']
+    derived_cols = [c for c in df.columns if c not in ['time'] and c in df.columns]
+    return df[derived_cols]
+
+
+def _add_derived_fields(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add commonly used derived fields to daily data.
+    
+    Args:
+        df: Raw daily dataframe
+        
+    Returns:
+        DataFrame with additional computed fields
+    """
+    df = df.copy()
+    
+    # Direction
+    df['is_green'] = df['close'] > df['open']
+    df['is_red'] = df['close'] < df['open']
+    
+    # Returns
+    df['day_return'] = (df['close'] - df['open']) / df['open']
+    df['day_return_pct'] = df['day_return'] * 100
+    
+    # Range
+    df['range'] = df['high'] - df['low']
+    df['range_pct'] = (df['range'] / df['open']) * 100
+    
+    # Rolling volumes
+    df['volume_sma_10'] = df['volume'].rolling(10, min_periods=1).mean()
+    df['volume_sma_20'] = df['volume'].rolling(20, min_periods=1).mean()
+    df['relative_volume'] = df['volume'] / df['volume_sma_10']
+    
+    # Rolling price metrics
+    df['atr_14'] = df['range'].rolling(14, min_periods=1).mean()
+    
+    # Weekday
+    df['weekday'] = df['date'].apply(lambda d: pd.Timestamp(d).day_name())
+    df['weekday_num'] = df['date'].apply(lambda d: pd.Timestamp(d).weekday())
+    
+    return df
+
+
+def get_daily_data_summary(
+    product: str,
+    start_date: str,
+    end_date: str
+) -> dict:
+    """
+    Get summary statistics about daily data.
+    
+    Args:
+        product: Contract ID
+        start_date: Start date
+        end_date: End date
+        
+    Returns:
+        Dictionary with summary stats
+    """
+    engine = get_engine()
+    
+    sql = text("""
+        SELECT 
+            COUNT(*) as total_days,
+            MIN([time]) as first_date,
+            MAX([time]) as last_date,
+            AVG([volume]) as avg_volume,
+            MIN([low]) as period_low,
+            MAX([high]) as period_high
+        FROM dbo.DailyData
+        WHERE contract_id = :prod
+          AND [time] BETWEEN :start AND :end
+    """)
+    
+    result = pd.read_sql(
+        sql,
+        engine,
+        params={
+            'prod': product,
+            'start': f"{start_date} 00:00:00",
+            'end': f"{end_date} 23:59:59"
+        }
+    )
+    
+    return result.iloc[0].to_dict() if not result.empty else {}
+
