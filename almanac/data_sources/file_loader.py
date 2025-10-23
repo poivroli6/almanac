@@ -8,6 +8,9 @@ import pandas as pd
 from pathlib import Path
 from typing import Optional
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # Base directory for data files
@@ -188,3 +191,41 @@ def get_available_products() -> list[str]:
     
     products = [f.stem for f in min_dir.glob("*.txt")]
     return sorted(products)
+
+
+def save_minute_data_to_file(
+    df: pd.DataFrame,
+    product: str,
+    file_path: Optional[Path] = None
+) -> Path:
+    """
+    Save minute data to a text file in the standard format.
+    
+    Args:
+        df: DataFrame with columns: time, open, high, low, close, volume
+        product: Product symbol (e.g., 'ES', 'BTCUSD')
+        file_path: Optional custom file path
+        
+    Returns:
+        Path to the saved file
+    """
+    if file_path is None:
+        file_path = DATA_DIR / "1min" / f"{product}.txt"
+    
+    # Ensure directory exists
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Convert DataFrame to the standard format
+    df_save = df.copy()
+    
+    # Format time as MM/DD/YYYY HH:MM
+    df_save['date'] = df_save['time'].dt.strftime('%m/%d/%Y')
+    df_save['time_str'] = df_save['time'].dt.strftime('%H:%M')
+    
+    # Select and order columns for output
+    output_df = df_save[['date', 'time_str', 'open', 'high', 'low', 'close', 'volume']].copy()
+    
+    # Save to CSV without header
+    output_df.to_csv(file_path, index=False, header=False)
+    
+    return file_path

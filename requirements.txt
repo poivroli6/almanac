@@ -1,5 +1,5 @@
 # Core Dependencies
-dash>=2.14.0
+dash>=3.0.4
 pandas>=1.5.0
 sqlalchemy>=2.0.0
 plotly>=5.17.0
@@ -7,9 +7,21 @@ pyodbc>=5.0.0
 
 # Caching
 flask-caching>=2.0.0
+redis>=4.5.0
+
+# Performance Monitoring
+psutil>=5.9.0
+structlog>=23.1.0
 
 # Trading Calendar (optional but recommended)
 pandas-market-calendars>=4.3.0
+
+# Timezone support
+pytz>=2023.3
+
+# Data Sources
+alpaca-py>=0.20.0
+yfinance>=0.2.0
 
 # Statistical Analysis (for trend tests)
 scipy>=1.10.0
@@ -19,6 +31,10 @@ numpy>=1.24.0
 pytest>=7.4.0
 pytest-cov>=4.1.0
 pytest-mock>=3.11.0
+
+# Performance Testing
+pytest-benchmark>=4.0.0
+locust>=2.16.0
 
 # Development Tools (optional)
 black>=23.0.0

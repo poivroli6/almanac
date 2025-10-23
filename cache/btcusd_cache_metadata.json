@@ -1,0 +1,17 @@
+{
+  "last_update": "2025-10-17T22:04:04.750364",
+  "minute_records": 27537,
+  "daily_records": 1825,
+  "minute_date_range": {
+    "start": "2025-09-24T21:15:00+00:00",
+    "end": "2025-10-17T21:14:00+00:00"
+  },
+  "daily_date_range": {
+    "start": "2020-10-17",
+    "end": "2025-10-15"
+  },
+  "price_range": {
+    "min": 11347.578125,
+    "max": 126198.0703125
+  }
+}

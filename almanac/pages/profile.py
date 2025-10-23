@@ -221,7 +221,7 @@ def create_sidebar_content():
             'statistical-section',
             'Statistical Visuals',
             [
-                html.Label("Median %", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
+                html.Label("Mean Trim %", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
                 dcc.Input(
                     id='median-percentage',
                     type='number',
@@ -232,7 +232,7 @@ def create_sidebar_content():
                     style={'width': '100%', 'marginBottom': '15px'},
                     placeholder='Enter percentage (0-50%)'
                 ),
-                html.Small("Percentage for median calculations (0-50%)", style={'color': '#666', 'fontSize': '11px', 'display': 'block', 'marginBottom': '15px'}),
+                html.Small("Percentage to trim from extremes for trimmed mean calculations (0-50%)", style={'color': '#666', 'fontSize': '11px', 'display': 'block', 'marginBottom': '15px'}),
                 
                 html.Label("Display Measures", style={'fontWeight': 'bold', 'marginBottom': '10px'}),
                 dcc.Checklist(
@@ -1448,6 +1448,11 @@ def register_filter_callbacks(app):
 def register_profile_callbacks(app, cache):
     """Register all callbacks for the profile page."""
     
+    # Import timing decorator
+    from ..utils.monitoring import monitor_callback_timing
+    # Import schema validation decorator
+    from ..debugging import validate_output_count
+    
     # Register the main calculation callback
     @app.callback(
         [
@@ -1487,6 +1492,8 @@ def register_profile_callbacks(app, cache):
         ]
     )
     @cache.memoize(timeout=300)  # Reduced timeout to 5 minutes
+    @validate_output_count(17)
+    @monitor_callback_timing("update_graphs_simple")
     def update_graphs_simple(n, prod, start, end, mh, filters, vol_thr, pct_thr, median_pct, selected_measures, tA_h, tA_m, tB_h, tB_m):
         """Main callback to update all charts and summary."""
         print(f"\n[DEBUG] Callback triggered: n_clicks={n}")

@@ -7,6 +7,9 @@ Loads and processes daily OHLCV data from files or database.
 import pandas as pd
 from typing import Optional
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     from sqlalchemy import text
@@ -28,9 +31,10 @@ def load_daily_data(
     Load daily OHLCV data from files or database.
     
     Tries file-based loading first, falls back to database if files not available.
+    For TSLA, generates daily data from minute data via Alpaca API.
     
     Args:
-        product: Contract ID (e.g., 'ES', 'NQ', 'GC')
+        product: Contract ID (e.g., 'ES', 'NQ', 'GC', 'TSLA')
         start_date: Start date (YYYY-MM-DD or datetime)
         end_date: End date (YYYY-MM-DD or datetime)
         add_derived_fields: Whether to add derived fields (date, rolling volumes, etc.)
@@ -42,7 +46,43 @@ def load_daily_data(
     Raises:
         ValueError: If no data found
     """
-    # Try file-based loading first
+    # Handle TSLA data by loading from cached files
+    if product == 'TSLA':
+        try:
+            # First try to load from cached daily file
+            if use_files:
+                try:
+                    return load_daily_data_from_file(product, start_date, end_date, add_derived_fields)
+                except Exception as e:
+                    logger.warning(f"Failed to load TSLA daily from cache: {e}")
+            
+            # If no cached daily data, try to generate from minute data
+            try:
+                from .alpaca_loader import load_tsla_minute_data
+                
+                # Load minute data and convert to daily
+                minute_df = load_tsla_minute_data(start_date, end_date, use_cache=True, save_cache=False)
+                
+                if minute_df.empty:
+                    raise ValueError(f"No TSLA data found for date range {start_date} to {end_date}")
+                
+                # Convert minute data to daily OHLCV
+                daily_df = _convert_minute_to_daily(minute_df)
+                
+                if add_derived_fields:
+                    daily_df = _add_derived_fields(daily_df)
+                
+                return daily_df
+                
+            except ImportError:
+                raise ValueError("TSLA data requires alpaca-py. Install with: pip install alpaca-py>=0.20.0")
+            except Exception as e:
+                raise ValueError(f"Failed to load TSLA daily data: {e}")
+            
+        except Exception as e:
+            raise ValueError(f"Failed to load TSLA daily data: {e}")
+    
+    # Try file-based loading first for other products
     if use_files:
         try:
             return load_daily_data_from_file(product, start_date, end_date, add_derived_fields)
@@ -182,4 +222,77 @@ def get_daily_data_summary(
     )
     
     return result.iloc[0].to_dict() if not result.empty else {}
+
+
+def _convert_minute_to_daily(minute_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Convert minute-level data to daily OHLCV data.
+    
+    Args:
+        minute_df: DataFrame with minute data (time, open, high, low, close, volume)
+        
+    Returns:
+        DataFrame with daily data (time, open, high, low, close, volume)
+    """
+    if minute_df.empty:
+        return pd.DataFrame()
+    
+    # Ensure time column is datetime
+    minute_df = minute_df.copy()
+    minute_df['time'] = pd.to_datetime(minute_df['time'])
+    
+    # Group by date and aggregate
+    daily_df = minute_df.groupby(minute_df['time'].dt.date).agg({
+        'open': 'first',    # First price of the day
+        'high': 'max',      # Highest price of the day
+        'low': 'min',       # Lowest price of the day
+        'close': 'last',    # Last price of the day
+        'volume': 'sum'     # Total volume for the day
+    }).reset_index()
+    
+    # Rename date column to time for consistency
+    daily_df = daily_df.rename(columns={'time': 'time'})
+    
+    # Convert date back to datetime
+    daily_df['time'] = pd.to_datetime(daily_df['time'])
+    
+    # Ensure proper column order
+    daily_df = daily_df[['time', 'open', 'high', 'low', 'close', 'volume']]
+    
+    return daily_df
+
+
+def _add_derived_fields(daily_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add derived fields to daily data.
+    
+    Args:
+        daily_df: DataFrame with daily OHLCV data
+        
+    Returns:
+        DataFrame with additional derived fields
+    """
+    if daily_df.empty:
+        return daily_df
+    
+    df = daily_df.copy()
+    
+    # Add date field (date only, no time)
+    df['date'] = df['time'].dt.date
+    
+    # Add price change fields
+    df['price_change'] = df['close'] - df['open']
+    df['price_change_pct'] = (df['price_change'] / df['open']) * 100
+    
+    # Add high-low range
+    df['range'] = df['high'] - df['low']
+    df['range_pct'] = (df['range'] / df['open']) * 100
+    
+    # Add rolling volume (5-day average)
+    df['volume_5d_avg'] = df['volume'].rolling(window=5, min_periods=1).mean()
+    
+    # Add volume ratio (current volume / 5-day average)
+    df['volume_ratio'] = df['volume'] / df['volume_5d_avg']
+    
+    return df
 

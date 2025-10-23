@@ -69,6 +69,75 @@ def create_accordion_section(section_id, title, children, is_open=True, icon=Non
     ], style={'marginBottom': '10px'})
 
 
+def create_analytics_section():
+    """Create analytics section for the sidebar."""
+    return create_accordion_section(
+        'analytics-section',
+        'Advanced Analytics',
+        [
+            html.Div([
+                html.Label("Analysis Type", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
+                dcc.Dropdown(
+                    id='analytics-type',
+                    options=[
+                        {'label': 'Basic Statistics', 'value': 'basic'},
+                        {'label': 'Risk Analysis', 'value': 'risk'},
+                        {'label': 'Comprehensive', 'value': 'comprehensive'}
+                    ],
+                    value='comprehensive',
+                    clearable=False,
+                    style={'fontSize': '12px'}
+                )
+            ], style={'marginBottom': '10px'}),
+            
+            html.Div([
+                html.Label("Statistical Tests", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
+                dcc.Checklist(
+                    id='statistical-tests',
+                    options=[
+                        {'label': 'Normality Tests', 'value': 'normality'},
+                        {'label': 'Confidence Intervals', 'value': 'confidence'},
+                        {'label': 'T-tests', 'value': 'ttest'}
+                    ],
+                    value=['normality', 'confidence'],
+                    style={'fontSize': '11px'}
+                )
+            ], style={'marginBottom': '10px'}),
+            
+            html.Div([
+                html.Label("Risk Metrics", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
+                dcc.Checklist(
+                    id='risk-metrics',
+                    options=[
+                        {'label': 'VaR', 'value': 'var'},
+                        {'label': 'Max Drawdown', 'value': 'drawdown'},
+                        {'label': 'Sharpe Ratio', 'value': 'sharpe'}
+                    ],
+                    value=['var', 'drawdown', 'sharpe'],
+                    style={'fontSize': '11px'}
+                )
+            ], style={'marginBottom': '10px'}),
+            
+            html.Button(
+                "🔬 Run Analytics",
+                id='run-analytics-btn',
+                style={
+                    'width': '100%',
+                    'padding': '8px',
+                    'backgroundColor': '#6f42c1',
+                    'color': 'white',
+                    'border': 'none',
+                    'borderRadius': '4px',
+                    'cursor': 'pointer',
+                    'fontSize': '12px'
+                }
+            )
+        ],
+        is_open=False,
+        icon='🔬'
+    )
+
+
 def create_preset_controls():
     """
     Create preset save/load controls.

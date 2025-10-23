@@ -1,0 +1,77 @@
+{
+  "generated_at": "2025-10-21T20:48:12.787142",
+  "app_name": "Unknown",
+  "callbacks": {
+    "update_graphs": {
+      "callback_id": "..h-avg.figure...h-var.figure...h-range.figure...h-var-range.figure...m-avg.figure...m-var.figure...m-range.figure...m-var-range.figure...summary-box.children...hod-lod-kpi-cards.children...hod-survival.figure...lod-survival.figure...hod-heatmap.figure...lod-heatmap.figure...hod-rolling.figure...lod-rolling.figure...total-cases-display.children...hourly-graphs-container.style...hod-lod-container.style..",
+      "outputs": [],
+      "inputs": [
+        "{'id': 'calc-btn', 'property': 'n_clicks'}"
+      ],
+      "states": [
+        "{'id': 'product-dropdown', 'property': 'value'}",
+        "{'id': 'filter-start-date', 'property': 'date'}",
+        "{'id': 'filter-end-date', 'property': 'date'}",
+        "{'id': 'filters', 'property': 'value'}",
+        "{'id': 'vol-threshold', 'property': 'value'}",
+        "{'id': 'pct-threshold', 'property': 'value'}"
+      ],
+      "output_count": 0,
+      "input_count": 1,
+      "state_count": 6,
+      "total_parameters": 7
+    },
+    "show_progress_indicator": {
+      "callback_id": "progress-indicator.style",
+      "outputs": [],
+      "inputs": [
+        "{'id': 'calc-btn', 'property': 'n_clicks'}"
+      ],
+      "states": [],
+      "output_count": 0,
+      "input_count": 1,
+      "state_count": 0,
+      "total_parameters": 1
+    },
+    "update_current_time": {
+      "callback_id": "current-time-display.children",
+      "outputs": [],
+      "inputs": [
+        "{'id': 'current-time-display', 'property': 'id'}"
+      ],
+      "states": [],
+      "output_count": 0,
+      "input_count": 1,
+      "state_count": 0,
+      "total_parameters": 1
+    },
+    "handle_date_range": {
+      "callback_id": "..filter-start-date.date@171b47c541df40722c63fb56efee9507859a1ec5cb537056db4316069c8313d7...filter-end-date.date@171b47c541df40722c63fb56efee9507859a1ec5cb537056db4316069c8313d7..",
+      "outputs": [],
+      "inputs": [
+        "{'id': 'product-dropdown', 'property': 'value'}",
+        "{'id': 'max-date-range-btn', 'property': 'n_clicks'}"
+      ],
+      "states": [],
+      "output_count": 0,
+      "input_count": 2,
+      "state_count": 0,
+      "total_parameters": 2
+    },
+    "toggle_help_modal": {
+      "callback_id": "help-modal-overlay.style",
+      "outputs": [],
+      "inputs": [
+        "{'id': 'help-modal-btn', 'property': 'n_clicks'}",
+        "{'id': 'close-help-modal-btn', 'property': 'n_clicks'}"
+      ],
+      "states": [
+        "{'id': 'help-modal-overlay', 'property': 'style'}"
+      ],
+      "output_count": 0,
+      "input_count": 2,
+      "state_count": 1,
+      "total_parameters": 3
+    }
+  }
+}
