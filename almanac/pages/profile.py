@@ -8,6 +8,7 @@ from dash import dcc, html, Input, Output, State
 import dash.dependencies
 import pandas as pd
 import math
+import time
 
 from ..data_sources import load_minute_data, load_daily_data
 from ..features import (
@@ -246,6 +247,68 @@ def create_sidebar_content():
                     value=['mean', 'trimmed_mean', 'median', 'mode'],
                     style={'marginBottom': '20px'}
                 ),
+                
+                # Calculate Buttons (separated)
+                html.Div([
+                    html.Button(
+                        '📊 Calculate Hourly',
+                        id='calc-hourly-btn',
+                        n_clicks=0,
+                        title='Run hourly analysis only',
+                        style={
+                            'width': '100%',
+                            'padding': '10px',
+                            'fontWeight': 'bold',
+                            'backgroundColor': '#007bff',
+                            'color': 'white',
+                            'border': 'none',
+                            'borderRadius': '4px',
+                            'cursor': 'pointer',
+                            'marginBottom': '5px',
+                            'fontSize': '13px'
+                        }
+                    ),
+                    html.Button(
+                        '⏱️ Calculate Minutes',
+                        id='calc-minutes-btn',
+                        n_clicks=0,
+                        title='Run minute analysis only',
+                        style={
+                            'width': '100%',
+                            'padding': '10px',
+                            'fontWeight': 'bold',
+                            'backgroundColor': '#28a745',
+                            'color': 'white',
+                            'border': 'none',
+                            'borderRadius': '4px',
+                            'cursor': 'pointer',
+                            'marginBottom': '10px',
+                            'fontSize': '13px'
+                        }
+                    )
+                ]),
+                
+                # Progress Bar
+                html.Div([
+                    html.Div([
+                        html.Div(id='calc-progress-bar', style={
+                            'width': '0%',
+                            'height': '20px',
+                            'backgroundColor': '#007bff',
+                            'borderRadius': '10px',
+                            'transition': 'width 0.3s ease'
+                        })
+                    ], style={
+                        'width': '100%',
+                        'height': '20px',
+                        'backgroundColor': '#e9ecef',
+                        'borderRadius': '10px',
+                        'overflow': 'hidden',
+                        'marginBottom': '10px',
+                        'display': 'none'
+                    }, id='calc-progress-container'),
+                    html.Div(id='calc-status', style={'fontSize': '12px', 'color': '#666', 'textAlign': 'center'})
+                ]),
             ],
             is_open=True,
             icon='📊'
@@ -468,27 +531,7 @@ def create_sidebar_content():
             icon='🔧'
         ),
         
-        # Action Buttons
-        html.Hr(style={'margin': '20px 0'}),
-        
-                html.Button(
-            '🚀 Calculate',
-                    id='calc-btn',
-                    n_clicks=0,
-            title='Run analysis (Ctrl+Enter)',
-                    style={
-                        'width': '100%',
-                'padding': '12px',
-                        'fontWeight': 'bold',
-                        'backgroundColor': '#007bff',
-                        'color': 'white',
-                        'border': 'none',
-                        'borderRadius': '4px',
-                'cursor': 'pointer',
-                'marginBottom': '10px',
-                'fontSize': '14px'
-            }
-        ),
+        # Action Buttons section removed - calculate button moved to top
         
         # Export Controls (Agent 2 additions)
         html.Div([
@@ -651,7 +694,9 @@ def create_profile_layout():
     return layout
 
 
-def register_profile_callbacks_old(app, cache):
+# OLD FUNCTION REMOVED - Using register_profile_callbacks instead
+
+def register_profile_callbacks_old_DISABLED(app, cache):
     """Register all callbacks for the profile page."""
     
     # TEMPORARY FIX: Simplified callback to get app working
@@ -693,7 +738,7 @@ def register_profile_callbacks_old(app, cache):
         ]
     )
     @cache.memoize(timeout=300)  # Reduced timeout to 5 minutes
-    def update_graphs_simple(n, prod, start, end, mh, filters, vol_thr, pct_thr, median_pct, selected_measures, tA_h, tA_m, tB_h, tB_m):
+    def update_hourly_graphs(n, prod, start, end, mh, filters, vol_thr, pct_thr, median_pct, selected_measures, tA_h, tA_m, tB_h, tB_m):
         """Main callback to update all charts and summary."""
         print(f"\n[DEBUG] Callback triggered: n_clicks={n}")
         print(f"[DEBUG] Parameters: prod={prod}, start={start}, end={end}, mh={mh}")
@@ -735,7 +780,7 @@ def register_profile_callbacks_old(app, cache):
                 ])
                 empty_fig = make_line_chart([], [], "No Data", "", "")
                 empty_kpi = html.Div("No data available")
-                return (empty_fig,) * 8 + (error_msg, empty_kpi) + (empty_fig,) * 6 + ("77 cases",)
+                return (empty_fig,) * 8 + (error_msg, empty_kpi) + (empty_fig,) * 6 + ("77 cases", {'width': '0%', 'height': '20px', 'backgroundColor': '#dc3545', 'borderRadius': '10px', 'transition': 'width 0.3s ease'}, {'width': '100%', 'height': '20px', 'backgroundColor': '#e9ecef', 'borderRadius': '10px', 'overflow': 'hidden', 'marginBottom': '10px', 'display': 'none'}, "Error occurred")
             
             # Apply filtering
             filtered_minute = minute
@@ -1074,14 +1119,10 @@ def register_profile_callbacks_old(app, cache):
                               mean_data=hr, trimmed_mean_data=hrm, median_data=hmed_r, mode_data=hmode_r,
                               trim_pct=median_pct, selected_measures=selected_measures),
                 make_line_chart(hvr.index, hvr, "Hourly Var Range", "Hour", "Var"),
-                make_line_chart(mc.index, mc, f"Min Avg %∆ @ {mh}:00", "Minute", "Pct", 
-                              mean_data=mc, trimmed_mean_data=mcm, median_data=mmed, mode_data=mmode,
-                              trim_pct=median_pct, selected_measures=selected_measures),
-                make_line_chart(mv.index, mv, f"Min Var %∆ @ {mh}:00", "Minute", "Var"),
-                make_line_chart(mr.index, mr, f"Min Avg Range @ {mh}:00", "Minute", "Price", 
-                              mean_data=mr, trimmed_mean_data=mrm, median_data=mmed_r, mode_data=mmode_r,
-                              trim_pct=median_pct, selected_measures=selected_measures),
-                make_line_chart(mvr.index, mvr, f"Min Var Range @ {mh}:00", "Minute", "Var"),
+                make_line_chart([], [], "Click 'Calculate Minutes' to load data", "", ""),  # m-avg - empty for hourly-only
+                make_line_chart([], [], "Click 'Calculate Minutes' to load data", "", ""),  # m-var - empty for hourly-only
+                make_line_chart([], [], "Click 'Calculate Minutes' to load data", "", ""),  # m-range - empty for hourly-only
+                make_line_chart([], [], "Click 'Calculate Minutes' to load data", "", ""),  # m-var-range - empty for hourly-only
                 summary,
                 empty_kpi,  # HOD/LOD KPI cards
                 hod_survival_fig,
@@ -1090,7 +1131,10 @@ def register_profile_callbacks_old(app, cache):
                 lod_heatmap_fig,
                 hod_rolling_fig,
                 lod_rolling_fig,
-                f"{filtered_days} cases"  # Total cases display
+                f"{filtered_days} cases",  # Total cases display
+                {'width': '100%', 'height': '20px', 'backgroundColor': '#28a745', 'borderRadius': '10px', 'transition': 'width 0.3s ease'},  # Progress bar complete
+                {'width': '100%', 'height': '20px', 'backgroundColor': '#e9ecef', 'borderRadius': '10px', 'overflow': 'hidden', 'marginBottom': '10px', 'display': 'none'},  # Hide container
+                "Hourly analysis complete!"  # Status message
             )
         
             print(f"[DEBUG] Callback completed successfully!")
@@ -1113,7 +1157,7 @@ def register_profile_callbacks_old(app, cache):
             ])
             empty_fig = make_line_chart([], [], "No Data", "", "")
             empty_kpi = html.Div("Error occurred")
-            return (empty_fig,) * 8 + (error_msg, empty_kpi) + (empty_fig,) * 6 + ("77 cases",)
+            return (empty_fig,) * 8 + (error_msg, empty_kpi) + (empty_fig,) * 6 + ("77 cases", {'width': '0%', 'height': '20px', 'backgroundColor': '#dc3545', 'borderRadius': '10px', 'transition': 'width 0.3s ease'}, {'width': '100%', 'height': '20px', 'backgroundColor': '#e9ecef', 'borderRadius': '10px', 'overflow': 'hidden', 'marginBottom': '10px', 'display': 'none'}, "Error occurred")
 
 
 def _scale_variance(v):
@@ -1448,7 +1492,7 @@ def register_filter_callbacks(app):
 def register_profile_callbacks(app, cache):
     """Register all callbacks for the profile page."""
     
-    # Register the main calculation callback
+    # Register the hourly calculation callback
     @app.callback(
         [
             Output('h-avg', 'figure'),
@@ -1468,8 +1512,11 @@ def register_profile_callbacks(app, cache):
             Output('hod-rolling', 'figure'),
             Output('lod-rolling', 'figure'),
             Output('total-cases-display', 'children'),
+            Output('calc-progress-bar', 'style'),
+            Output('calc-progress-container', 'style'),
+            Output('calc-status', 'children'),
         ],
-        Input('calc-btn', 'n_clicks'),
+        Input('calc-hourly-btn', 'n_clicks'),
         [
             State('product-dropdown', 'value'),
             State('filter-start-date', 'date'),
@@ -1487,7 +1534,7 @@ def register_profile_callbacks(app, cache):
         ]
     )
     @cache.memoize(timeout=300)  # Reduced timeout to 5 minutes
-    def update_graphs_simple(n, prod, start, end, mh, filters, vol_thr, pct_thr, median_pct, selected_measures, tA_h, tA_m, tB_h, tB_m):
+    def update_hourly_graphs(n, prod, start, end, mh, filters, vol_thr, pct_thr, median_pct, selected_measures, tA_h, tA_m, tB_h, tB_m):
         """Main callback to update all charts and summary."""
         print(f"\n[DEBUG] Callback triggered: n_clicks={n}")
         print(f"[DEBUG] Parameters: prod={prod}, start={start}, end={end}, mh={mh}")
@@ -1501,6 +1548,24 @@ def register_profile_callbacks(app, cache):
         hod_heatmap_fig = lod_heatmap_fig = empty_fig
         hod_rolling_fig = lod_rolling_fig = empty_fig
         
+        # Early guard and timing setup to avoid hanging on initial/inadvertent triggers
+        start_time = time.perf_counter()
+        if not n:
+            placeholder = make_line_chart([], [], "Awaiting calculation", "", "")
+            return (
+                placeholder, placeholder, placeholder, placeholder,  # h-avg, h-var, h-range, h-var-range
+                placeholder, placeholder, placeholder, placeholder,  # m-avg, m-var, m-range, m-var-range
+                html.Div(""),                                       # summary-box
+                html.Div(""),                                       # hod-lod-kpi-cards
+                placeholder, placeholder,                            # hod-survival, lod-survival
+                placeholder, placeholder,                            # hod-heatmap, lod-heatmap
+                placeholder, placeholder,                            # hod-rolling, lod-rolling
+                "",                                                 # total-cases-display
+                { 'width': '0%', 'height': '20px', 'backgroundColor': '#007bff', 'borderRadius': '10px', 'transition': 'width 0.3s ease' },
+                { 'width': '100%', 'height': '20px', 'backgroundColor': '#e9ecef', 'borderRadius': '10px', 'overflow': 'hidden', 'marginBottom': '10px', 'display': 'none' },
+                ""
+            )
+        
         try:
             debug_msgs = []
             # Try loading from database first
@@ -1508,6 +1573,9 @@ def register_profile_callbacks(app, cache):
                 daily = load_daily_data(prod, start, end)
                 minute = load_minute_data(prod, start, end)
                 debug_msgs.append(f"Loaded daily={len(daily)} rows, minute={len(minute)} rows")
+                load_dur = time.perf_counter() - start_time
+                print(f"[PERF] Data load took {load_dur:.2f}s")
+                debug_msgs.append(f"PERF: load {load_dur:.2f}s")
                 
                 # Intermarket data loading disabled in simplified version
                 intermarket_daily = None
@@ -1529,7 +1597,7 @@ def register_profile_callbacks(app, cache):
                 ])
                 empty_fig = make_line_chart([], [], "No Data", "", "")
                 empty_kpi = html.Div("No data available")
-                return (empty_fig,) * 8 + (error_msg, empty_kpi) + (empty_fig,) * 6 + ("77 cases",)
+                return (empty_fig,) * 8 + (error_msg, empty_kpi) + (empty_fig,) * 6 + ("77 cases", { 'width': '0%', 'height': '20px', 'backgroundColor': '#dc3545', 'borderRadius': '10px', 'transition': 'width 0.3s ease' }, { 'width': '100%', 'height': '20px', 'backgroundColor': '#e9ecef', 'borderRadius': '10px', 'overflow': 'hidden', 'marginBottom': '10px', 'display': 'none' }, "Error occurred")
             
             # Apply filtering
             filtered_minute = minute
@@ -1538,7 +1606,10 @@ def register_profile_callbacks(app, cache):
             try:
                 pre_rows = len(filtered_minute)
                 filtered_minute = apply_filters(filtered_minute, daily, filters, vol_thr, pct_thr)
+                filt_dur = time.perf_counter() - start_time
+                print(f"[PERF] Base filters took {filt_dur:.2f}s (rows {pre_rows} -> {len(filtered_minute)})")
                 debug_msgs.append(f"After base filters [{','.join(filters or [])}]: {pre_rows} -> {len(filtered_minute)} rows")
+                debug_msgs.append(f"PERF: base_filters {filt_dur:.2f}s")
             except Exception as filter_error:
                 import traceback
                 traceback.print_exc()
@@ -1551,7 +1622,10 @@ def register_profile_callbacks(app, cache):
                     filtered_minute = apply_time_filters(
                         filtered_minute, filters, tA_h, tA_m, tB_h, tB_m
                     )
+                    tf_dur = time.perf_counter() - start_time
+                    print(f"[PERF] Time filters took {tf_dur:.2f}s (rows {before_time} -> {len(filtered_minute)})")
                     debug_msgs.append(f"After time filters: {before_time} -> {len(filtered_minute)} rows")
+                    debug_msgs.append(f"PERF: time_filters {tf_dur:.2f}s")
                 except Exception as time_error:
                     import traceback
                     traceback.print_exc()
@@ -1564,10 +1638,13 @@ def register_profile_callbacks(app, cache):
                 selected_measures = selected_measures or ['mean', 'trimmed_mean', 'median', 'mode']
                 
                 # Compute hourly stats with all 4 measures
+                stats_t0 = time.perf_counter()
                 hc, hcm, hmed, hmode, hv, hr, hrm, hmed_r, hmode_r, hvr = compute_hourly_stats(filtered_minute, trim_pct)
-                
-                # Compute minute stats with all 4 measures
+                # Compute minute stats with all 4 measures (kept for downstream summaries)
                 mc, mcm, mmed, mmode, mv, mr, mrm, mmed_r, mmode_r, mvr = compute_minute_stats(filtered_minute, mh, trim_pct)
+                stats_dur = time.perf_counter() - stats_t0
+                print(f"[PERF] Stats computation took {stats_dur:.2f}s")
+                debug_msgs.append(f"PERF: stats {stats_dur:.2f}s")
             except Exception as stats_error:
                 import traceback
                 traceback.print_exc()
@@ -1868,14 +1945,10 @@ def register_profile_callbacks(app, cache):
                               mean_data=hr, trimmed_mean_data=hrm, median_data=hmed_r, mode_data=hmode_r,
                               trim_pct=median_pct, selected_measures=selected_measures),
                 make_line_chart(hvr.index, hvr, "Hourly Var Range", "Hour", "Var"),
-                make_line_chart(mc.index, mc, f"Min Avg %∆ @ {mh}:00", "Minute", "Pct", 
-                              mean_data=mc, trimmed_mean_data=mcm, median_data=mmed, mode_data=mmode,
-                              trim_pct=median_pct, selected_measures=selected_measures),
-                make_line_chart(mv.index, mv, f"Min Var %∆ @ {mh}:00", "Minute", "Var"),
-                make_line_chart(mr.index, mr, f"Min Avg Range @ {mh}:00", "Minute", "Price", 
-                              mean_data=mr, trimmed_mean_data=mrm, median_data=mmed_r, mode_data=mmode_r,
-                              trim_pct=median_pct, selected_measures=selected_measures),
-                make_line_chart(mvr.index, mvr, f"Min Var Range @ {mh}:00", "Minute", "Var"),
+                make_line_chart([], [], "Click 'Calculate Minutes' to load data", "", ""),  # m-avg - empty for hourly-only
+                make_line_chart([], [], "Click 'Calculate Minutes' to load data", "", ""),  # m-var - empty for hourly-only
+                make_line_chart([], [], "Click 'Calculate Minutes' to load data", "", ""),  # m-range - empty for hourly-only
+                make_line_chart([], [], "Click 'Calculate Minutes' to load data", "", ""),  # m-var-range - empty for hourly-only
                 summary,
                 empty_kpi,  # HOD/LOD KPI cards
                 hod_survival_fig,
@@ -1884,7 +1957,10 @@ def register_profile_callbacks(app, cache):
                 lod_heatmap_fig,
                 hod_rolling_fig,
                 lod_rolling_fig,
-                f"{filtered_days} cases"  # Total cases display
+                f"{filtered_days} cases",  # Total cases display
+                {'width': '100%', 'height': '20px', 'backgroundColor': '#28a745', 'borderRadius': '10px', 'transition': 'width 0.3s ease'},  # Progress bar complete
+                {'width': '100%', 'height': '20px', 'backgroundColor': '#e9ecef', 'borderRadius': '10px', 'overflow': 'hidden', 'marginBottom': '10px', 'display': 'none'},  # Hide container
+                "Hourly analysis complete!"  # Status message
             )
             
             print(f"[DEBUG] Callback completed successfully!")
@@ -1907,8 +1983,82 @@ def register_profile_callbacks(app, cache):
             ])
             empty_fig = make_line_chart([], [], "No Data", "", "")
             empty_kpi = html.Div("Error occurred")
-            return (empty_fig,) * 8 + (error_msg, empty_kpi) + (empty_fig,) * 6 + ("77 cases",)
+            return (empty_fig,) * 8 + (error_msg, empty_kpi) + (empty_fig,) * 6 + ("77 cases", {'width': '0%', 'height': '20px', 'backgroundColor': '#dc3545', 'borderRadius': '10px', 'transition': 'width 0.3s ease'}, {'width': '100%', 'height': '20px', 'backgroundColor': '#e9ecef', 'borderRadius': '10px', 'overflow': 'hidden', 'marginBottom': '10px', 'display': 'none'}, "Error occurred")
     
+    # Register the minute calculation callback
+    @app.callback(
+        [
+            Output('m-avg', 'figure', allow_duplicate=True),
+            Output('m-var', 'figure', allow_duplicate=True),
+            Output('m-range', 'figure', allow_duplicate=True),
+            Output('m-var-range', 'figure', allow_duplicate=True),
+            Output('calc-progress-bar', 'style', allow_duplicate=True),
+            Output('calc-progress-container', 'style', allow_duplicate=True),
+            Output('calc-status', 'children', allow_duplicate=True),
+        ],
+        Input('calc-minutes-btn', 'n_clicks'),
+        [
+            State('product-dropdown', 'value'),
+            State('filter-start-date', 'date'),
+            State('filter-end-date', 'date'),
+            State('minute-hour', 'value'),
+            State('filters', 'value'),
+            State('vol-threshold', 'value'),
+            State('pct-threshold', 'value'),
+            State('median-percentage', 'value'),
+            State('stat-measures', 'value'),
+            State('timeA-hour', 'value'),
+            State('timeA-minute', 'value'),
+            State('timeB-hour', 'value'),
+            State('timeB-minute', 'value'),
+        ],
+        prevent_initial_call=True
+    )
+    @cache.memoize(timeout=300)
+    def update_minute_graphs(n, prod, start, end, mh, filters, vol_thr, pct_thr, median_pct, selected_measures, tA_h, tA_m, tB_h, tB_m):
+        """Callback to update minute charts only."""
+        print(f"\n[DEBUG] Minute Callback triggered: n_clicks={n}")
+        
+        if not n:
+            empty_fig = make_line_chart([], [], "No Data", "", "")
+            return (empty_fig,) * 4 + (
+                {'width': '0%', 'height': '20px', 'backgroundColor': '#007bff', 'borderRadius': '10px', 'transition': 'width 0.3s ease'},
+                {'width': '100%', 'height': '20px', 'backgroundColor': '#e9ecef', 'borderRadius': '10px', 'overflow': 'hidden', 'marginBottom': '10px', 'display': 'none'},
+                ""
+            )
+        
+        try:
+            # Load data
+            daily = load_daily_data(prod, start, end)
+            minute = load_minute_data(prod, start, end)
+            
+            # Process minute data
+            filtered_minute = minute
+            mc, mcm, mmed, mmode, mv, mr, mrm, mmed_r, mmode_r, mvr = compute_minute_stats(filtered_minute, mh, median_pct)
+            
+            return (
+                make_line_chart(mc.index, mc, f"Min Avg %∆ @ {mh}:00", "Minute", "Pct", 
+                              mean_data=mc, trimmed_mean_data=mcm, median_data=mmed, mode_data=mmode,
+                              trim_pct=median_pct, selected_measures=selected_measures),
+                make_line_chart(mv.index, mv, f"Min Var %∆ @ {mh}:00", "Minute", "Var"),
+                make_line_chart(mr.index, mr, f"Min Avg Range @ {mh}:00", "Minute", "Price", 
+                              mean_data=mr, trimmed_mean_data=mrm, median_data=mmed_r, mode_data=mmode_r,
+                              trim_pct=median_pct, selected_measures=selected_measures),
+                make_line_chart(mvr.index, mvr, f"Min Var Range @ {mh}:00", "Minute", "Var"),
+                {'width': '100%', 'height': '20px', 'backgroundColor': '#28a745', 'borderRadius': '10px', 'transition': 'width 0.3s ease'},
+                {'width': '100%', 'height': '20px', 'backgroundColor': '#e9ecef', 'borderRadius': '10px', 'overflow': 'hidden', 'marginBottom': '10px', 'display': 'none'},
+                "Minute analysis complete!"
+            )
+            
+        except Exception as e:
+            print(f"Error in minute callback: {e}")
+            empty_fig = make_line_chart([], [], "Error occurred", "", "")
+            return (empty_fig,) * 4 + (
+                {'width': '0%', 'height': '20px', 'backgroundColor': '#dc3545', 'borderRadius': '10px', 'transition': 'width 0.3s ease'},
+                {'width': '100%', 'height': '20px', 'backgroundColor': '#e9ecef', 'borderRadius': '10px', 'overflow': 'hidden', 'marginBottom': '10px', 'display': 'none'},
+                "Error occurred"
+            )
+
     # Register export callbacks (Agent 2)
     register_export_callbacks(app)
     
