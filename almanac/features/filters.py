@@ -131,18 +131,29 @@ def apply_filters(
         df = df[df['date'].apply(lambda d: d.strftime('%Y-%m-%d') in major_dates)]
     
     # Apply previous-day direction filters
-    if 'prev_pos' in filters:
-        df = df[df['p_close'] > df['p_open']]
-    
-    if 'prev_neg' in filters:
-        df = df[df['p_close'] < df['p_open']]
+    # Check for mutually exclusive filters
+    if 'prev_pos' in filters and 'prev_neg' in filters:
+        # Both filters are mutually exclusive, warn and ignore both
+        import warnings
+        warnings.warn("Both 'prev_pos' and 'prev_neg' filters are active with AND logic - these are mutually exclusive. Ignoring both filters.")
+    else:
+        if 'prev_pos' in filters:
+            df = df[df['p_close'] > df['p_open']]
+
+        if 'prev_neg' in filters:
+            df = df[df['p_close'] < df['p_open']]
     
     # Apply previous-day percentage change filters
-    if 'prev_pct_pos' in filters and pct_threshold is not None:
-        df = df[df['p_return_pct'] >= pct_threshold]
-    
-    if 'prev_pct_neg' in filters and pct_threshold is not None:
-        df = df[df['p_return_pct'] <= -pct_threshold]
+    # Check for mutually exclusive percentage filters
+    if 'prev_pct_pos' in filters and 'prev_pct_neg' in filters and pct_threshold is not None:
+        import warnings
+        warnings.warn("Both 'prev_pct_pos' and 'prev_pct_neg' filters are active with AND logic at the same threshold - these are mutually exclusive. Ignoring both filters.")
+    else:
+        if 'prev_pct_pos' in filters and pct_threshold is not None:
+            df = df[df['p_return_pct'] >= pct_threshold]
+        
+        if 'prev_pct_neg' in filters and pct_threshold is not None:
+            df = df[df['p_return_pct'] <= -pct_threshold]
     
     # Apply relative volume filters
     df['p_relvol'] = df['p_volume'] / df['p_volume_sma_10']
