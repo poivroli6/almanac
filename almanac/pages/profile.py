@@ -865,11 +865,11 @@ def register_profile_callbacks_old_DISABLED(app, cache):
                 trim_pct = median_pct or 5.0
                 selected_measures = selected_measures or ['mean', 'trimmed_mean', 'median', 'mode']
                 
-                # Compute hourly stats with all 4 measures
-                hc, hcm, hmed, hmode, hv, hr, hrm, hmed_r, hmode_r, hvr = compute_hourly_stats(filtered_minute, trim_pct)
+                # Compute hourly stats with all 5 measures (including outlier)
+                hc, hcm, hmed, hmode, houtlier, hv, hr, hrm, hmed_r, hmode_r, houtlier_r, hvr = compute_hourly_stats(filtered_minute, trim_pct)
                 
-                # Compute minute stats with all 4 measures
-                mc, mcm, mmed, mmode, mv, mr, mrm, mmed_r, mmode_r, mvr = compute_minute_stats(filtered_minute, mh, trim_pct)
+                # Compute minute stats with all 5 measures (including outlier)
+                mc, mcm, mmed, mmode, moutlier, mv, mr, mrm, mmed_r, mmode_r, moutlier_r, mvr = compute_minute_stats(filtered_minute, mh, trim_pct)
             except Exception as stats_error:
                 import traceback
                 traceback.print_exc()
@@ -1160,14 +1160,14 @@ def register_profile_callbacks_old_DISABLED(app, cache):
             # Count filtered trading days for total cases display
             filtered_days = filtered_minute['date'].nunique() if 'date' in filtered_minute.columns else 0
             
-            # Create figures with all 4 statistical measures
+            # Create figures with all 5 statistical measures (including outlier)
             return (
                 make_line_chart(hc.index, hc, "Hourly Avg % Change", "Hour", "Pct", 
-                              mean_data=hc, trimmed_mean_data=hcm, median_data=hmed, mode_data=hmode,
+                              mean_data=hc, trimmed_mean_data=hcm, median_data=hmed, mode_data=hmode, outlier_data=houtlier,
                               trim_pct=median_pct, selected_measures=selected_measures),
                 make_line_chart(hv.index, hv, "Hourly Var % Change", "Hour", "Var"),
                 make_line_chart(hr.index, hr, "Hourly Avg Range", "Hour", "Price", 
-                              mean_data=hr, trimmed_mean_data=hrm, median_data=hmed_r, mode_data=hmode_r,
+                              mean_data=hr, trimmed_mean_data=hrm, median_data=hmed_r, mode_data=hmode_r, outlier_data=houtlier_r,
                               trim_pct=median_pct, selected_measures=selected_measures),
                 make_line_chart(hvr.index, hvr, "Hourly Var Range", "Hour", "Var"),
                 make_line_chart([], [], "Click 'Calculate Minutes' to load data", "", ""),  # m-avg - empty for hourly-only
@@ -1688,11 +1688,11 @@ def register_profile_callbacks(app, cache):
                 trim_pct = median_pct or 5.0
                 selected_measures = selected_measures or ['mean', 'trimmed_mean', 'median', 'mode']
                 
-                # Compute hourly stats with all 4 measures
+                # Compute hourly stats with all 5 measures (including outlier)
                 stats_t0 = time.perf_counter()
-                hc, hcm, hmed, hmode, hv, hr, hrm, hmed_r, hmode_r, hvr = compute_hourly_stats(filtered_minute, trim_pct)
-                # Compute minute stats with all 4 measures (kept for downstream summaries)
-                mc, mcm, mmed, mmode, mv, mr, mrm, mmed_r, mmode_r, mvr = compute_minute_stats(filtered_minute, mh, trim_pct)
+                hc, hcm, hmed, hmode, houtlier, hv, hr, hrm, hmed_r, hmode_r, houtlier_r, hvr = compute_hourly_stats(filtered_minute, trim_pct)
+                # Compute minute stats with all 5 measures (including outlier)
+                mc, mcm, mmed, mmode, moutlier, mv, mr, mrm, mmed_r, mmode_r, moutlier_r, mvr = compute_minute_stats(filtered_minute, mh, trim_pct)
                 stats_dur = time.perf_counter() - stats_t0
                 print(f"[PERF] Stats computation took {stats_dur:.2f}s")
                 debug_msgs.append(f"PERF: stats {stats_dur:.2f}s")
@@ -1986,14 +1986,14 @@ def register_profile_callbacks(app, cache):
             # Count filtered trading days for total cases display
             filtered_days = filtered_minute['date'].nunique() if 'date' in filtered_minute.columns else 0
             
-            # Create figures with all 4 statistical measures
+            # Create figures with all 5 statistical measures (including outlier)
             return (
                 make_line_chart(hc.index, hc, "Hourly Avg % Change", "Hour", "Pct", 
-                              mean_data=hc, trimmed_mean_data=hcm, median_data=hmed, mode_data=hmode,
+                              mean_data=hc, trimmed_mean_data=hcm, median_data=hmed, mode_data=hmode, outlier_data=houtlier,
                               trim_pct=median_pct, selected_measures=selected_measures),
                 make_line_chart(hv.index, hv, "Hourly Var % Change", "Hour", "Var"),
                 make_line_chart(hr.index, hr, "Hourly Avg Range", "Hour", "Price", 
-                              mean_data=hr, trimmed_mean_data=hrm, median_data=hmed_r, mode_data=hmode_r,
+                              mean_data=hr, trimmed_mean_data=hrm, median_data=hmed_r, mode_data=hmode_r, outlier_data=houtlier_r,
                               trim_pct=median_pct, selected_measures=selected_measures),
                 make_line_chart(hvr.index, hvr, "Hourly Var Range", "Hour", "Var"),
                 make_line_chart([], [], "Click 'Calculate Minutes' to load data", "", ""),  # m-avg - empty for hourly-only
@@ -2085,15 +2085,15 @@ def register_profile_callbacks(app, cache):
             
             # Process minute data
             filtered_minute = minute
-            mc, mcm, mmed, mmode, mv, mr, mrm, mmed_r, mmode_r, mvr = compute_minute_stats(filtered_minute, mh, median_pct)
+            mc, mcm, mmed, mmode, moutlier, mv, mr, mrm, mmed_r, mmode_r, moutlier_r, mvr = compute_minute_stats(filtered_minute, mh, median_pct)
             
             return (
                 make_line_chart(mc.index, mc, f"Min Avg %∆ @ {mh}:00", "Minute", "Pct", 
-                              mean_data=mc, trimmed_mean_data=mcm, median_data=mmed, mode_data=mmode,
+                              mean_data=mc, trimmed_mean_data=mcm, median_data=mmed, mode_data=mmode, outlier_data=moutlier,
                               trim_pct=median_pct, selected_measures=selected_measures),
                 make_line_chart(mv.index, mv, f"Min Var %∆ @ {mh}:00", "Minute", "Var"),
                 make_line_chart(mr.index, mr, f"Min Avg Range @ {mh}:00", "Minute", "Price", 
-                              mean_data=mr, trimmed_mean_data=mrm, median_data=mmed_r, mode_data=mmode_r,
+                              mean_data=mr, trimmed_mean_data=mrm, median_data=mmed_r, mode_data=mmode_r, outlier_data=moutlier_r,
                               trim_pct=median_pct, selected_measures=selected_measures),
                 make_line_chart(mvr.index, mvr, f"Min Var Range @ {mh}:00", "Minute", "Var"),
                 {'width': '100%', 'height': '20px', 'backgroundColor': '#28a745', 'borderRadius': '10px', 'transition': 'width 0.3s ease'},
@@ -2368,56 +2368,112 @@ def register_profile_callbacks(app, cache):
         # Add to existing rows (allows multiple scenarios)
         updated_rows = current_rows + [new_row]
         
+        # **COMBINE FILTERS FROM ALL ACTIVE ROWS**
+        all_filters = []
+        for row in updated_rows:
+            # Extract preset ID from row
+            row_id = row.get('props', {}).get('id', {})
+            if isinstance(row_id, dict):
+                row_index = row_id.get('index', '')
+                # Extract preset_value from the ID (format: "preset_value_random")
+                preset_val = row_index.split('_')[0] if row_index else ''
+                if preset_val in preset_mappings:
+                    all_filters.extend(preset_mappings[preset_val]['filters'])
+        
+        # Remove duplicates while preserving order
+        combined_filters = []
+        seen = set()
+        for f in all_filters:
+            if f not in seen:
+                combined_filters.append(f)
+                seen.add(f)
+        
         # Success message only for important actions
         if day_count > 0:
             print(f"[SCENARIO] Applied: {preset_info['name']}")
+            print(f"[FILTERS] Combined filters from all active scenarios: {combined_filters}")
         
         # Clear the dropdown after applying
-        return updated_rows, None, preset_info['filters']
+        return updated_rows, None, combined_filters
     
-    # Remove Preset Row Callback
+    # Remove Preset Row Callback - also updates filters
     @app.callback(
-        Output('dynamic-preset-rows', 'children', allow_duplicate=True),
+        [Output('dynamic-preset-rows', 'children', allow_duplicate=True),
+         Output('filters', 'value', allow_duplicate=True)],
         Input({'type': 'remove-preset', 'index': dash.dependencies.ALL}, 'n_clicks'),
         State('dynamic-preset-rows', 'children'),
         prevent_initial_call=True
     )
     def remove_preset_row(n_clicks_list, current_rows):
-        """Remove a preset row when X button is clicked."""
+        """Remove a preset row when X button is clicked and update combined filters."""
         import json
         
         ctx = dash.callback_context
         
+        # Preset mappings
+        preset_mappings = {
+            'bullish': {'name': 'Bullish Days (Close > Open)', 'filters': ['prev_pos']},
+            'bearish': {'name': 'Bearish Days (Close < Open)', 'filters': ['prev_neg']},
+            'strong_moves': {'name': 'Strong Moves (%∆ ≥ Threshold)', 'filters': ['prev_pct_pos', 'prev_pct_neg']},
+            'high_volume': {'name': 'High Volume Days', 'filters': ['relvol_gt']},
+            'weekdays': {'name': 'Weekdays Only', 'filters': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']},
+            'all': {'name': 'All Conditions (No Filters)', 'filters': []}
+        }
+        
         # Return current rows if nothing to work with
         if not current_rows:
-            return []
+            return [], []
         
         # Check if any button was actually clicked (not just initial None values)
         if not ctx.triggered or all(click is None for click in n_clicks_list):
-            return current_rows
+            # Still need to update filters based on current rows
+            updated_rows = current_rows
+        else:
+            # Find which preset was clicked to remove
+            triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+            
+            try:
+                # Parse the ID to get the preset index
+                parsed_id = json.loads(triggered_id)
+                if parsed_id.get('type') == 'remove-preset':
+                    preset_id = parsed_id['index']
+                    
+                    # Remove the row with matching preset_id
+                    updated_rows = [
+                        row for row in current_rows 
+                        if row.get('props', {}).get('id', {}).get('index') != preset_id
+                    ]
+                    
+                    print(f"[SCENARIO] Removed: {preset_id}")
+                else:
+                    updated_rows = current_rows
+            except Exception as e:
+                print(f"[ERROR] Failed to remove preset: {e}")
+                updated_rows = current_rows
         
-        # Find which preset was clicked to remove
-        triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        # **RECALCULATE COMBINED FILTERS FROM ALL REMAINING ROWS**
+        all_filters = []
+        for row in updated_rows:
+            # Extract preset ID from row
+            row_id = row.get('props', {}).get('id', {})
+            if isinstance(row_id, dict):
+                row_index = row_id.get('index', '')
+                # Extract preset_value from the ID (format: "preset_value_random")
+                preset_val = row_index.split('_')[0] if row_index else ''
+                if preset_val in preset_mappings:
+                    all_filters.extend(preset_mappings[preset_val]['filters'])
         
-        try:
-            # Parse the ID to get the preset index
-            parsed_id = json.loads(triggered_id)
-            if parsed_id.get('type') == 'remove-preset':
-                preset_id = parsed_id['index']
-                
-                # Remove the row with matching preset_id
-                updated_rows = [
-                    row for row in current_rows 
-                    if row.get('props', {}).get('id', {}).get('index') != preset_id
-                ]
-                
-                print(f"[SCENARIO] Removed: {preset_id}")
-                return updated_rows
-        except Exception as e:
-            print(f"[ERROR] Failed to remove preset: {e}")
-            return current_rows
+        # Remove duplicates while preserving order
+        combined_filters = []
+        seen = set()
+        for f in all_filters:
+            if f not in seen:
+                combined_filters.append(f)
+                seen.add(f)
         
-        return current_rows
+        print(f"[FILTERS] Updated combined filters after removal: {combined_filters}")
+        
+        return updated_rows, combined_filters
     
     # Preset Management Callbacks
     @app.callback(
