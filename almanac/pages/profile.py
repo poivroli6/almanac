@@ -242,92 +242,6 @@ def create_sidebar_content():
                     style={'marginBottom': '20px'}
                 ),
                 
-                # Calculate Buttons (Monthly/Daily/Hourly/Minutes)
-                html.Div([
-                    html.Button(
-                        '🗓️ Calculate Monthly',
-                        id='calc-monthly-btn',
-                        n_clicks=0,
-                        title='Run monthly analysis (January-December)',
-                        style={
-                            'width': '100%',
-                            'padding': '10px',
-                            'fontWeight': 'bold',
-                            'backgroundColor': '#20c997',
-                            'color': 'white',
-                            'border': 'none',
-                            'borderRadius': '4px',
-                            'cursor': 'pointer',
-                            'marginBottom': '5px',
-                            'fontSize': '13px'
-                        }
-                    ),
-                    html.Button(
-                        '📅 Calculate Daily',
-                        id='calc-daily-btn',
-                        n_clicks=0,
-                        title='Run day-of-week analysis (Monday-Sunday)',
-                        style={
-                            'width': '100%',
-                            'padding': '10px',
-                            'fontWeight': 'bold',
-                            'backgroundColor': '#6f42c1',
-                            'color': 'white',
-                            'border': 'none',
-                            'borderRadius': '4px',
-                            'cursor': 'pointer',
-                            'marginBottom': '5px',
-                            'fontSize': '13px'
-                        }
-                    ),
-                    html.Button(
-                        '📊 Calculate Hourly',
-                        id='calc-hourly-btn',
-                        n_clicks=0,
-                        title='Run hourly analysis only',
-                        style={
-                            'width': '100%',
-                            'padding': '10px',
-                            'fontWeight': 'bold',
-                            'backgroundColor': '#007bff',
-                            'color': 'white',
-                            'border': 'none',
-                            'borderRadius': '4px',
-                            'cursor': 'pointer',
-                            'marginBottom': '5px',
-                            'fontSize': '13px'
-                        }
-                    ),
-                    html.Button(
-                        '⏱️ Calculate Minutes',
-                        id='calc-minutes-btn',
-                        n_clicks=0,
-                        title='Run minute analysis only',
-                        style={
-                            'width': '100%',
-                            'padding': '10px',
-                            'fontWeight': 'bold',
-                            'backgroundColor': '#28a745',
-                            'color': 'white',
-                            'border': 'none',
-                            'borderRadius': '4px',
-                            'cursor': 'pointer',
-                            'marginBottom': '10px',
-                            'fontSize': '13px'
-                        }
-                    )
-                ]),
-                
-                # Minute Hour selector (under Calculate Minutes button)
-                html.Label("Minute Hour", style={'fontWeight': 'bold', 'marginTop': '10px'}),
-                dcc.Dropdown(
-                    id='minute-hour',
-                    options=[{'label': f'{h}:00', 'value': h} for h in range(0, 24) if h not in (5, 6)],
-                    value=9,
-                    clearable=False,
-                    style={'marginBottom': '20px'}
-                ),
-                
                 # Progress Bar
                 html.Div([
                     html.Div([
@@ -352,6 +266,120 @@ def create_sidebar_content():
             ],
             is_open=True,
             icon='📊'
+        ),
+        
+        # Calculate Buttons Section - Individual containers for each button
+        create_accordion_section(
+            'calc-monthly-section',
+            '🗓️ Monthly Analysis',
+            [
+                html.Button(
+                    'Calculate Monthly',
+                    id='calc-monthly-btn',
+                    n_clicks=0,
+                    title='Run monthly analysis (January-December)',
+                    style={
+                        'width': '100%',
+                        'padding': '12px',
+                        'fontWeight': 'bold',
+                        'backgroundColor': '#20c997',
+                        'color': 'white',
+                        'border': 'none',
+                        'borderRadius': '4px',
+                        'cursor': 'pointer',
+                        'fontSize': '14px'
+                    }
+                )
+            ],
+            is_open=True,
+            icon='🗓️'
+        ),
+        
+        create_accordion_section(
+            'calc-daily-section',
+            '📅 Daily Analysis',
+            [
+                html.Button(
+                    'Calculate Daily',
+                    id='calc-daily-btn',
+                    n_clicks=0,
+                    title='Run day-of-week analysis (Monday-Sunday)',
+                    style={
+                        'width': '100%',
+                        'padding': '12px',
+                        'fontWeight': 'bold',
+                        'backgroundColor': '#6f42c1',
+                        'color': 'white',
+                        'border': 'none',
+                        'borderRadius': '4px',
+                        'cursor': 'pointer',
+                        'fontSize': '14px'
+                    }
+                )
+            ],
+            is_open=True,
+            icon='📅'
+        ),
+        
+        create_accordion_section(
+            'calc-hourly-section',
+            '📊 Hourly Analysis',
+            [
+                html.Button(
+                    'Calculate Hourly',
+                    id='calc-hourly-btn',
+                    n_clicks=0,
+                    title='Run hourly analysis only',
+                    style={
+                        'width': '100%',
+                        'padding': '12px',
+                        'fontWeight': 'bold',
+                        'backgroundColor': '#007bff',
+                        'color': 'white',
+                        'border': 'none',
+                        'borderRadius': '4px',
+                        'cursor': 'pointer',
+                        'fontSize': '14px'
+                    }
+                )
+            ],
+            is_open=True,
+            icon='📊'
+        ),
+        
+        create_accordion_section(
+            'calc-minutes-section',
+            '⏱️ Minute Analysis',
+            [
+                html.Button(
+                    'Calculate Minutes',
+                    id='calc-minutes-btn',
+                    n_clicks=0,
+                    title='Run minute analysis only',
+                    style={
+                        'width': '100%',
+                        'padding': '12px',
+                        'fontWeight': 'bold',
+                        'backgroundColor': '#28a745',
+                        'color': 'white',
+                        'border': 'none',
+                        'borderRadius': '4px',
+                        'cursor': 'pointer',
+                        'fontSize': '14px',
+                        'marginBottom': '10px'
+                    }
+                ),
+                html.Label("Minute Hour", style={'fontWeight': 'bold'}),
+                dcc.Dropdown(
+                    id='minute-hour',
+                    options=[{'label': f'{h}:00', 'value': h} for h in range(0, 24) if h not in (5, 6)],
+                    value=9,
+                    clearable=False,
+                    style={'marginBottom': '0px'}
+                )
+            ],
+            is_open=True,
+            icon='⏱️'
         ),
         
         # Filters Section
@@ -2336,7 +2364,7 @@ def register_profile_callbacks(app, cache):
     register_filter_callbacks(app)
     
     # Register accordion callbacks
-    accordion_sections = ['product-time-section', 'statistical-section', 'filters-section']
+    accordion_sections = ['product-time-section', 'statistical-section', 'calc-monthly-section', 'calc-daily-section', 'calc-hourly-section', 'calc-minutes-section', 'filters-section']
     for section_id in accordion_sections:
         app.clientside_callback(
             """
