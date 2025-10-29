@@ -133,9 +133,11 @@ def apply_filters(
     # Apply previous-day direction filters
     # Check for mutually exclusive filters
     if 'prev_pos' in filters and 'prev_neg' in filters:
-        # Both filters are mutually exclusive, warn and ignore both
+        # Both filters are mutually exclusive with AND logic - warn but still apply (will result in 0 rows)
         import warnings
-        warnings.warn("Both 'prev_pos' and 'prev_neg' filters are active with AND logic - these are mutually exclusive. Ignoring both filters.")
+        warnings.warn("Both 'prev_pos' and 'prev_neg' filters are active with AND logic - these are mutually exclusive. Result will be 0 cases.")
+        # Apply both - will result in empty dataframe (as expected)
+        df = df[(df['p_close'] > df['p_open']) & (df['p_close'] < df['p_open'])]
     else:
         if 'prev_pos' in filters:
             df = df[df['p_close'] > df['p_open']]
@@ -146,8 +148,11 @@ def apply_filters(
     # Apply previous-day percentage change filters
     # Check for mutually exclusive percentage filters
     if 'prev_pct_pos' in filters and 'prev_pct_neg' in filters and pct_threshold is not None:
+        # Both filters are mutually exclusive with AND logic - warn but still apply (will result in 0 rows)
         import warnings
-        warnings.warn("Both 'prev_pct_pos' and 'prev_pct_neg' filters are active with AND logic at the same threshold - these are mutually exclusive. Ignoring both filters.")
+        warnings.warn("Both 'prev_pct_pos' and 'prev_pct_neg' filters are active with AND logic at the same threshold - these are mutually exclusive. Result will be 0 cases.")
+        # Apply both - will result in empty dataframe (as expected)
+        df = df[(df['p_return_pct'] >= pct_threshold) & (df['p_return_pct'] <= -pct_threshold)]
     else:
         if 'prev_pct_pos' in filters and pct_threshold is not None:
             df = df[df['p_return_pct'] >= pct_threshold]
