@@ -1,0 +1,11 @@
+{
+  "last_update": "2025-10-17T21:55:50.041422",
+  "last_date": "2025-10-17",
+  "minute_records": 16813,
+  "daily_records": 501,
+  "sources": [
+    "Yahoo Finance (Daily)",
+    "Alpaca (Minute)"
+  ],
+  "enhanced": true
+}

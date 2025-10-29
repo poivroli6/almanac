@@ -1,0 +1,17 @@
+{
+  "started_at": "2025-10-21T20:43:32.348511",
+  "schema_tests": [],
+  "execution_tests": [],
+  "validation_results": [],
+  "summary": {
+    "total_callbacks_tested": 0,
+    "schema_tests_passed": 0,
+    "schema_tests_failed": 0,
+    "validations_passed": 0,
+    "validations_failed": 0,
+    "overall_success_rate": 0
+  },
+  "error": "'outputs'",
+  "traceback": "Traceback (most recent call last):\n  File \"C:\\Program Files\\Coding Projects\\Almanac Futures\\almanac\\debugging\\testing_framework.py\", line 290, in run_all_tests\n    outputs = callback_info['outputs']\n              ~~~~~~~~~~~~~^^^^^^^^^^^\nKeyError: 'outputs'\n",
+  "completed_at": "2025-10-21T20:43:32.349028"
+}

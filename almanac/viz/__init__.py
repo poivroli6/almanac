@@ -9,6 +9,7 @@ from .figures import (
     make_heatmap,
     make_survival_curve,
     make_violin_plot,
+    make_multi_year_line_chart,
 )
 
 __all__ = [
@@ -16,5 +17,6 @@ __all__ = [
     'make_heatmap',
     'make_survival_curve',
     'make_violin_plot',
+    'make_multi_year_line_chart',
 ]
 

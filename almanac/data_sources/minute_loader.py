@@ -7,6 +7,13 @@ Loads and validates 1-minute intraday data from files or database.
 import pandas as pd
 from typing import Optional
 from datetime import datetime
+import logging
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+# Base directory for data files
+DATA_DIR = Path(__file__).parent.parent.parent
 
 try:
     from sqlalchemy import text
@@ -15,6 +22,7 @@ except ImportError:
     HAS_SQLALCHEMY = False
 
 from .file_loader import load_minute_data_from_file
+from .yfinance_loader import is_crypto_symbol, load_crypto_minute_data
 
 
 def load_minute_data(
@@ -29,9 +37,11 @@ def load_minute_data(
     Load minute-level intraday data from files or database.
     
     Tries file-based loading first, falls back to database if files not available.
+    For TSLA, uses Alpaca API with caching.
+    For cryptocurrencies, uses Yahoo Finance API with caching.
     
     Args:
-        product: Contract ID (e.g., 'ES', 'NQ', 'GC')
+        product: Contract ID (e.g., 'ES', 'NQ', 'GC', 'TSLA', 'BTCUSD')
         start_date: Start date (YYYY-MM-DD or datetime)
         end_date: End date (YYYY-MM-DD or datetime)
         interval: Time interval (default '1min')
@@ -44,7 +54,51 @@ def load_minute_data(
     Raises:
         ValueError: If no data found or validation fails
     """
-    # Try file-based loading first
+    # Handle TSLA data via cached files or Alpaca API
+    if product == 'TSLA':
+        try:
+            # First try to load from cached file
+            if use_files:
+                try:
+                    return load_minute_data_from_file(product, start_date, end_date, validate)
+                except Exception as e:
+                    logger.warning(f"Failed to load TSLA minute from cache: {e}")
+            
+            # If no cached data, try Alpaca API
+            try:
+                from .alpaca_loader import load_tsla_minute_data, validate_tsla_data
+                df = load_tsla_minute_data(start_date, end_date, use_cache=False, save_cache=True)
+                if validate:
+                    if not validate_tsla_data(df):
+                        raise ValueError("TSLA data validation failed")
+                return df
+            except ImportError:
+                raise ValueError("TSLA data requires alpaca-py. Install with: pip install alpaca-py>=0.20.0")
+            except Exception as e:
+                raise ValueError(f"Failed to load TSLA data: {e}")
+            
+        except Exception as e:
+            raise ValueError(f"Failed to load TSLA data: {e}")
+    
+    # Handle cryptocurrency data via Yahoo Finance API
+    if is_crypto_symbol(product):
+        # Check if local file exists first (for cached data)
+        file_path = DATA_DIR / "1min" / f"{product}.txt"
+        if file_path.exists():
+            try:
+                logger.info(f"Loading {product} from cached file: {file_path}")
+                return load_minute_data_from_file(product, start_date, end_date, validate)
+            except Exception as e:
+                logger.warning(f"Failed to load {product} from cache, using API: {e}")
+        
+        # Fallback to API if no cached file
+        try:
+            df = load_crypto_minute_data(product, start_date, end_date, validate=validate)
+            return df
+        except Exception as e:
+            raise ValueError(f"Failed to load {product} data: {e}")
+    
+    # Try file-based loading first for other products
     if use_files:
         try:
             return load_minute_data_from_file(product, start_date, end_date, validate)

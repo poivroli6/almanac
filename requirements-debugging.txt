@@ -1,0 +1,23 @@
+# Debugging System Dependencies
+
+# Core debugging dependencies
+psutil>=5.9.0  # System monitoring
+pytest>=7.0.0  # Testing framework
+pytest-dash>=0.1.0  # Dash-specific testing
+
+# Enhanced logging and monitoring
+colorlog>=6.7.0  # Colored logging output
+structlog>=22.0.0  # Structured logging
+
+# Performance monitoring
+memory-profiler>=0.60.0  # Memory usage tracking
+py-spy>=0.3.14  # Python profiler
+
+# Development and debugging tools
+ipdb>=0.13.0  # Enhanced debugger
+rich>=12.0.0  # Rich text and beautiful formatting for terminal
+click>=8.0.0  # Command line interface enhancements
+
+# Optional: Advanced debugging features
+# py-spy>=0.3.14  # Uncomment for advanced profiling
+# line-profiler>=4.0.0  # Uncomment for line-by-line profiling
