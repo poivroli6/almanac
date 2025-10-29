@@ -666,6 +666,7 @@ def create_profile_layout():
         dcc.Store(id='query-spec', storage_type='session'),
         dcc.Store(id='custom-filters-store', data=[], storage_type='session'),
         dcc.Store(id='dynamic-filters-store', data=[], storage_type='session'),
+        dcc.Store(id='active-presets-store', data=[], storage_type='session'),  # Track active presets
         
         # Left sidebar (controls) - NEW ACCORDION STRUCTURE
         html.Div(
@@ -2329,16 +2330,18 @@ def register_profile_callbacks(app, cache):
     @app.callback(
         [Output('dynamic-preset-rows', 'children'),
          Output('filter-presets-dropdown', 'value'),
-         Output('filters', 'value', allow_duplicate=True)],
+         Output('filters', 'value', allow_duplicate=True),
+         Output('active-presets-store', 'data')],
         [Input('apply-preset-btn', 'n_clicks')],
         [State('filter-presets-dropdown', 'value'),
-         State('dynamic-preset-rows', 'children')],
+         State('dynamic-preset-rows', 'children'),
+         State('active-presets-store', 'data')],
         prevent_initial_call=True
     )
-    def apply_filter_preset_with_rows(n_clicks, preset_value, current_rows):
+    def apply_filter_preset_with_rows(n_clicks, preset_value, current_rows, active_presets_data):
         """Apply predefined filter presets and create dynamic rows."""
         if not n_clicks or not preset_value:
-            return current_rows or [], None, []
+            return current_rows or [], None, [], active_presets_data or []
         
         # Preset mappings with display names and filter values
         preset_mappings = {
@@ -2352,7 +2355,7 @@ def register_profile_callbacks(app, cache):
         
         preset_info = preset_mappings.get(preset_value)
         if not preset_info:
-            return current_rows or [], None, []
+            return current_rows or [], None, [], active_presets_data or []
         
         # Allow multiple scenarios - don't check for duplicates
         current_rows = current_rows or []
@@ -2368,17 +2371,19 @@ def register_profile_callbacks(app, cache):
         # Add to existing rows (allows multiple scenarios)
         updated_rows = current_rows + [new_row]
         
-        # **COMBINE FILTERS FROM ALL ACTIVE ROWS**
+        # Update Store with new preset info
+        updated_store = (active_presets_data or []) + [{
+            'id': scenario_id,
+            'preset_value': preset_value,
+            'name': preset_info['name'],
+            'filters': preset_info['filters'],
+            'day_count': day_count
+        }]
+        
+        # **COMBINE FILTERS FROM STORE (not trying to parse HTML)**
         all_filters = []
-        for row in updated_rows:
-            # Extract preset ID from row
-            row_id = row.get('props', {}).get('id', {})
-            if isinstance(row_id, dict):
-                row_index = row_id.get('index', '')
-                # Extract preset_value from the ID (format: "preset_value_random")
-                preset_val = row_index.split('_')[0] if row_index else ''
-                if preset_val in preset_mappings:
-                    all_filters.extend(preset_mappings[preset_val]['filters'])
+        for preset in updated_store:
+            all_filters.extend(preset['filters'])
         
         # Remove duplicates while preserving order
         combined_filters = []
@@ -2394,39 +2399,32 @@ def register_profile_callbacks(app, cache):
             print(f"[FILTERS] Combined filters from all active scenarios: {combined_filters}")
         
         # Clear the dropdown after applying
-        return updated_rows, None, combined_filters
+        return updated_rows, None, combined_filters, updated_store
     
     # Remove Preset Row Callback - also updates filters
     @app.callback(
         [Output('dynamic-preset-rows', 'children', allow_duplicate=True),
-         Output('filters', 'value', allow_duplicate=True)],
+         Output('filters', 'value', allow_duplicate=True),
+         Output('active-presets-store', 'data', allow_duplicate=True)],
         Input({'type': 'remove-preset', 'index': dash.dependencies.ALL}, 'n_clicks'),
-        State('dynamic-preset-rows', 'children'),
+        [State('dynamic-preset-rows', 'children'),
+         State('active-presets-store', 'data')],
         prevent_initial_call=True
     )
-    def remove_preset_row(n_clicks_list, current_rows):
+    def remove_preset_row(n_clicks_list, current_rows, active_presets_data):
         """Remove a preset row when X button is clicked and update combined filters."""
         import json
         
         ctx = dash.callback_context
         
-        # Preset mappings
-        preset_mappings = {
-            'bullish': {'name': 'Bullish Days (Close > Open)', 'filters': ['prev_pos']},
-            'bearish': {'name': 'Bearish Days (Close < Open)', 'filters': ['prev_neg']},
-            'strong_moves': {'name': 'Strong Moves (%∆ ≥ Threshold)', 'filters': ['prev_pct_pos', 'prev_pct_neg']},
-            'high_volume': {'name': 'High Volume Days', 'filters': ['relvol_gt']},
-            'weekdays': {'name': 'Weekdays Only', 'filters': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']},
-            'all': {'name': 'All Conditions (No Filters)', 'filters': []}
-        }
-        
-        # Return current rows if nothing to work with
-        if not current_rows:
-            return [], []
+        # Return current state if nothing to work with
+        if not current_rows or not active_presets_data:
+            return current_rows or [], [], active_presets_data or []
         
         # Check if any button was actually clicked (not just initial None values)
         if not ctx.triggered or all(click is None for click in n_clicks_list):
-            # Still need to update filters based on current rows
+            # No removal - just recalculate filters from current rows
+            updated_store = active_presets_data
             updated_rows = current_rows
         else:
             # Find which preset was clicked to remove
@@ -2438,30 +2436,32 @@ def register_profile_callbacks(app, cache):
                 if parsed_id.get('type') == 'remove-preset':
                     preset_id = parsed_id['index']
                     
-                    # Remove the row with matching preset_id
-                    updated_rows = [
-                        row for row in current_rows 
-                        if row.get('props', {}).get('id', {}).get('index') != preset_id
-                    ]
+                    # Remove from Store
+                    updated_store = [p for p in active_presets_data if p.get('id') != preset_id]
+                    
+                    # Remove from rows (find row where the button's id matches)
+                    updated_rows = []
+                    for row in current_rows:
+                        row_id = row.get('props', {}).get('id', {})
+                        if isinstance(row_id, dict):
+                            if row_id.get('index') != preset_id:
+                                updated_rows.append(row)
+                        else:
+                            updated_rows.append(row)
                     
                     print(f"[SCENARIO] Removed: {preset_id}")
                 else:
+                    updated_store = active_presets_data
                     updated_rows = current_rows
             except Exception as e:
                 print(f"[ERROR] Failed to remove preset: {e}")
+                updated_store = active_presets_data
                 updated_rows = current_rows
         
-        # **RECALCULATE COMBINED FILTERS FROM ALL REMAINING ROWS**
+        # **RECALCULATE COMBINED FILTERS FROM STORE**
         all_filters = []
-        for row in updated_rows:
-            # Extract preset ID from row
-            row_id = row.get('props', {}).get('id', {})
-            if isinstance(row_id, dict):
-                row_index = row_id.get('index', '')
-                # Extract preset_value from the ID (format: "preset_value_random")
-                preset_val = row_index.split('_')[0] if row_index else ''
-                if preset_val in preset_mappings:
-                    all_filters.extend(preset_mappings[preset_val]['filters'])
+        for preset in updated_store:
+            all_filters.extend(preset.get('filters', []))
         
         # Remove duplicates while preserving order
         combined_filters = []
@@ -2473,7 +2473,7 @@ def register_profile_callbacks(app, cache):
         
         print(f"[FILTERS] Updated combined filters after removal: {combined_filters}")
         
-        return updated_rows, combined_filters
+        return updated_rows, combined_filters, updated_store
     
     # Preset Management Callbacks
     @app.callback(
