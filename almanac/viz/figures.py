@@ -21,6 +21,7 @@ def make_line_chart(
     trimmed_mean_data: Optional[pd.Series | list] = None,
     median_data: Optional[pd.Series | list] = None,
     mode_data: Optional[pd.Series | list] = None,
+    outlier_data: Optional[pd.Series | list] = None,
     trim_pct: float = 5.0,
     selected_measures: Optional[list] = None
 ) -> go.Figure:
@@ -39,15 +40,16 @@ def make_line_chart(
         trimmed_mean_data: Trimmed mean data
         median_data: Median data
         mode_data: Mode data
+        outlier_data: Outlier data (average of top/bottom percentiles)
         trim_pct: Trim percentage for display
-        selected_measures: List of measures to display ['mean', 'trimmed_mean', 'median', 'mode']
+        selected_measures: List of measures to display ['mean', 'trimmed_mean', 'median', 'mode', 'outlier']
         
     Returns:
         Plotly Figure
     """
     # Default to showing all measures if none specified
     if selected_measures is None:
-        selected_measures = ['mean', 'trimmed_mean', 'median', 'mode']
+        selected_measures = ['mean', 'trimmed_mean', 'median', 'mode', 'outlier']
     
     # Convert to numpy arrays for consistent handling
     x_vals = x.values if hasattr(x, 'values') else x
@@ -84,7 +86,8 @@ def make_line_chart(
         'mean': {'color': '#1f77b4', 'width': 2, 'dash': 'solid', 'name': 'Mean'},
         'trimmed_mean': {'color': '#ff7f0e', 'width': 2, 'dash': 'dash', 'name': f'Trimmed Mean ({trim_pct:.0f}%)'},
         'median': {'color': '#2ca02c', 'width': 2, 'dash': 'dot', 'name': 'Median'},
-        'mode': {'color': '#d62728', 'width': 2, 'dash': 'dashdot', 'name': 'Mode'}
+        'mode': {'color': '#d62728', 'width': 2, 'dash': 'dashdot', 'name': 'Mode'},
+        'outlier': {'color': '#9467bd', 'width': 2, 'dash': 'longdash', 'name': f'Outlier ({trim_pct:.0f}%)'}
     }
     
     # Add traces for selected measures
@@ -147,6 +150,20 @@ def make_line_chart(
                 color=measure_styles['mode']['color'],
                 width=measure_styles['mode']['width'],
                 dash=measure_styles['mode']['dash']
+            )
+        ))
+    
+    if 'outlier' in selected_measures and outlier_data is not None:
+        outlier_vals = outlier_data.values if hasattr(outlier_data, 'values') else outlier_data
+        fig.add_trace(go.Scatter(
+            x=x_vals,
+            y=outlier_vals,
+            mode=mode,
+            name=measure_styles['outlier']['name'],
+            line=dict(
+                color=measure_styles['outlier']['color'],
+                width=measure_styles['outlier']['width'],
+                dash=measure_styles['outlier']['dash']
             )
         ))
     

@@ -204,15 +204,6 @@ def create_sidebar_content():
                     value='ES',
                     clearable=False,
                     style={'marginBottom': '20px'}
-                ),
-                
-                html.Label("Minute Hour", style={'fontWeight': 'bold'}),
-                dcc.Dropdown(
-                    id='minute-hour',
-                    options=[{'label': f'{h}:00', 'value': h} for h in range(0, 24) if h not in (5, 6)],
-                    value=9,
-                    clearable=False,
-                    style={'marginBottom': '20px'}
                 )
             ],
             is_open=True,
@@ -326,6 +317,16 @@ def create_sidebar_content():
                         }
                     )
                 ]),
+                
+                # Minute Hour selector (under Calculate Minutes button)
+                html.Label("Minute Hour", style={'fontWeight': 'bold', 'marginTop': '10px'}),
+                dcc.Dropdown(
+                    id='minute-hour',
+                    options=[{'label': f'{h}:00', 'value': h} for h in range(0, 24) if h not in (5, 6)],
+                    value=9,
+                    clearable=False,
+                    style={'marginBottom': '20px'}
+                ),
                 
                 # Progress Bar
                 html.Div([
@@ -1158,19 +1159,25 @@ def register_profile_callbacks_old_DISABLED(app, cache):
             if debug_msgs:
                 summary = summary + [html.Hr(), html.B("Debug"), html.Br()] + [html.Div(m) for m in debug_msgs]
             
-            # Count filtered trading days for total cases display
+            # Count filtered trading days for total cases display - use total trading days if no filters
             filtered_days = filtered_minute['date'].nunique() if 'date' in filtered_minute.columns else 0
+            if filtered_days == 0 and not filters:
+                # No filters applied, use total trading days from daily data
+                filtered_days = daily.index.nunique() if hasattr(daily, 'index') else len(daily)
+            
+            # Create dynamic title suffix
+            title_suffix = f" | {prod} | {filtered_days} cases | {start} to {end}"
             
             # Create figures with all 5 statistical measures (including outlier)
             return (
-                make_line_chart(hc.index, hc, "Hourly Avg % Change", "Hour", "Pct", 
+                make_line_chart(hc.index, hc, f"Hourly Avg % Change{title_suffix}", "Hour", "Pct", 
                               mean_data=hc, trimmed_mean_data=hcm, median_data=hmed, mode_data=hmode, outlier_data=houtlier,
                               trim_pct=median_pct, selected_measures=selected_measures),
-                make_line_chart(hv.index, hv, "Hourly Var % Change", "Hour", "Var"),
-                make_line_chart(hr.index, hr, "Hourly Avg Range", "Hour", "Price", 
+                make_line_chart(hv.index, hv, f"Hourly Var % Change{title_suffix}", "Hour", "Var"),
+                make_line_chart(hr.index, hr, f"Hourly Avg Range{title_suffix}", "Hour", "Price", 
                               mean_data=hr, trimmed_mean_data=hrm, median_data=hmed_r, mode_data=hmode_r, outlier_data=houtlier_r,
                               trim_pct=median_pct, selected_measures=selected_measures),
-                make_line_chart(hvr.index, hvr, "Hourly Var Range", "Hour", "Var"),
+                make_line_chart(hvr.index, hvr, f"Hourly Var Range{title_suffix}", "Hour", "Var"),
                 make_line_chart([], [], "Click 'Calculate Minutes' to load data", "", ""),  # m-avg - empty for hourly-only
                 make_line_chart([], [], "Click 'Calculate Minutes' to load data", "", ""),  # m-var - empty for hourly-only
                 make_line_chart([], [], "Click 'Calculate Minutes' to load data", "", ""),  # m-range - empty for hourly-only
@@ -1984,19 +1991,25 @@ def register_profile_callbacks(app, cache):
             if debug_msgs:
                 summary = summary + [html.Hr(), html.B("Debug"), html.Br()] + [html.Div(m) for m in debug_msgs]
             
-            # Count filtered trading days for total cases display
+            # Count filtered trading days for total cases display - use total trading days if no filters
             filtered_days = filtered_minute['date'].nunique() if 'date' in filtered_minute.columns else 0
+            if filtered_days == 0 and not filters:
+                # No filters applied, use total trading days from daily data
+                filtered_days = daily.index.nunique() if hasattr(daily, 'index') else len(daily)
+            
+            # Create dynamic title suffix
+            title_suffix = f" | {prod} | {filtered_days} cases | {start} to {end}"
             
             # Create figures with all 5 statistical measures (including outlier)
             return (
-                make_line_chart(hc.index, hc, "Hourly Avg % Change", "Hour", "Pct", 
+                make_line_chart(hc.index, hc, f"Hourly Avg % Change{title_suffix}", "Hour", "Pct", 
                               mean_data=hc, trimmed_mean_data=hcm, median_data=hmed, mode_data=hmode, outlier_data=houtlier,
                               trim_pct=median_pct, selected_measures=selected_measures),
-                make_line_chart(hv.index, hv, "Hourly Var % Change", "Hour", "Var"),
-                make_line_chart(hr.index, hr, "Hourly Avg Range", "Hour", "Price", 
+                make_line_chart(hv.index, hv, f"Hourly Var % Change{title_suffix}", "Hour", "Var"),
+                make_line_chart(hr.index, hr, f"Hourly Avg Range{title_suffix}", "Hour", "Price", 
                               mean_data=hr, trimmed_mean_data=hrm, median_data=hmed_r, mode_data=hmode_r, outlier_data=houtlier_r,
                               trim_pct=median_pct, selected_measures=selected_measures),
-                make_line_chart(hvr.index, hvr, "Hourly Var Range", "Hour", "Var"),
+                make_line_chart(hvr.index, hvr, f"Hourly Var Range{title_suffix}", "Hour", "Var"),
                 make_line_chart([], [], "Click 'Calculate Minutes' to load data", "", ""),  # m-avg - empty for hourly-only
                 make_line_chart([], [], "Click 'Calculate Minutes' to load data", "", ""),  # m-var - empty for hourly-only
                 make_line_chart([], [], "Click 'Calculate Minutes' to load data", "", ""),  # m-range - empty for hourly-only
@@ -2088,15 +2101,24 @@ def register_profile_callbacks(app, cache):
             filtered_minute = minute
             mc, mcm, mmed, mmode, moutlier, mv, mr, mrm, mmed_r, mmode_r, moutlier_r, mvr = compute_minute_stats(filtered_minute, mh, median_pct)
             
+            # Count cases for dynamic titles - use total trading days if no filters
+            filtered_days = filtered_minute['date'].nunique() if 'date' in filtered_minute.columns else 0
+            if filtered_days == 0 and not filters:
+                # No filters applied, use total trading days from daily data
+                filtered_days = daily.index.nunique() if hasattr(daily, 'index') else len(daily)
+            
+            # Create dynamic title suffix
+            title_suffix = f" | {prod} | {filtered_days} cases | {start} to {end}"
+            
             return (
-                make_line_chart(mc.index, mc, f"Min Avg %∆ @ {mh}:00", "Minute", "Pct", 
+                make_line_chart(mc.index, mc, f"Min Avg %∆ @ {mh}:00{title_suffix}", "Minute", "Pct", 
                               mean_data=mc, trimmed_mean_data=mcm, median_data=mmed, mode_data=mmode, outlier_data=moutlier,
                               trim_pct=median_pct, selected_measures=selected_measures),
-                make_line_chart(mv.index, mv, f"Min Var %∆ @ {mh}:00", "Minute", "Var"),
-                make_line_chart(mr.index, mr, f"Min Avg Range @ {mh}:00", "Minute", "Price", 
+                make_line_chart(mv.index, mv, f"Min Var %∆ @ {mh}:00{title_suffix}", "Minute", "Var"),
+                make_line_chart(mr.index, mr, f"Min Avg Range @ {mh}:00{title_suffix}", "Minute", "Price", 
                               mean_data=mr, trimmed_mean_data=mrm, median_data=mmed_r, mode_data=mmode_r, outlier_data=moutlier_r,
                               trim_pct=median_pct, selected_measures=selected_measures),
-                make_line_chart(mvr.index, mvr, f"Min Var Range @ {mh}:00", "Minute", "Var"),
+                make_line_chart(mvr.index, mvr, f"Min Var Range @ {mh}:00{title_suffix}", "Minute", "Var"),
                 {'width': '100%', 'height': '20px', 'backgroundColor': '#28a745', 'borderRadius': '10px', 'transition': 'width 0.3s ease'},
                 {'width': '100%', 'height': '20px', 'backgroundColor': '#e9ecef', 'borderRadius': '10px', 'overflow': 'hidden', 'marginBottom': '10px', 'display': 'none'},
                 "Minute analysis complete!"
@@ -2175,15 +2197,24 @@ def register_profile_callbacks(app, cache):
             stats_dur = time.perf_counter() - start_time
             print(f"[PERF] Monthly stats computation took {stats_dur:.2f}s")
             
+            # Count cases for dynamic titles - use total trading days if no filters
+            filtered_days = filtered_minute['date'].nunique() if 'date' in filtered_minute.columns else 0
+            if filtered_days == 0 and not filters:
+                # No filters applied, use total trading days from daily data
+                filtered_days = daily.index.nunique() if hasattr(daily, 'index') else len(daily)
+            
+            # Create dynamic title suffix
+            title_suffix = f" | {prod} | {filtered_days} cases | {start} to {end}"
+            
             return (
-                make_line_chart(mc.index, mc, "Monthly Avg % Change (by Month)", "Month", "Pct", 
+                make_line_chart(mc.index, mc, f"Monthly Avg % Change (by Month){title_suffix}", "Month", "Pct", 
                               mean_data=mc, trimmed_mean_data=mcm, median_data=mmed, mode_data=mmode, outlier_data=moutlier,
                               trim_pct=median_pct, selected_measures=selected_measures),
-                make_line_chart(mv.index, mv, "Monthly Var % Change (by Month)", "Month", "Var"),
-                make_line_chart(mr.index, mr, "Monthly Avg Range (by Month)", "Month", "Price", 
+                make_line_chart(mv.index, mv, f"Monthly Var % Change (by Month){title_suffix}", "Month", "Var"),
+                make_line_chart(mr.index, mr, f"Monthly Avg Range (by Month){title_suffix}", "Month", "Price", 
                               mean_data=mr, trimmed_mean_data=mrm, median_data=mmed_r, mode_data=mmode_r, outlier_data=moutlier_r,
                               trim_pct=median_pct, selected_measures=selected_measures),
-                make_line_chart(mvr.index, mvr, "Monthly Var Range (by Month)", "Month", "Var"),
+                make_line_chart(mvr.index, mvr, f"Monthly Var Range (by Month){title_suffix}", "Month", "Var"),
                 {'width': '100%', 'height': '20px', 'backgroundColor': '#20c997', 'borderRadius': '10px', 'transition': 'width 0.3s ease'},
                 {'width': '100%', 'height': '20px', 'backgroundColor': '#e9ecef', 'borderRadius': '10px', 'overflow': 'hidden', 'marginBottom': '10px', 'display': 'none'},
                 "Monthly analysis complete!"
@@ -2264,15 +2295,24 @@ def register_profile_callbacks(app, cache):
             stats_dur = time.perf_counter() - start_time
             print(f"[PERF] Daily stats computation took {stats_dur:.2f}s")
             
+            # Count cases for dynamic titles - use total trading days if no filters
+            filtered_days = filtered_minute['date'].nunique() if 'date' in filtered_minute.columns else 0
+            if filtered_days == 0 and not filters:
+                # No filters applied, use total trading days from daily data
+                filtered_days = daily.index.nunique() if hasattr(daily, 'index') else len(daily)
+            
+            # Create dynamic title suffix
+            title_suffix = f" | {prod} | {filtered_days} cases | {start} to {end}"
+            
             return (
-                make_line_chart(dc.index, dc, "Daily Avg % Change (by Day of Week)", "Day of Week", "Pct", 
+                make_line_chart(dc.index, dc, f"Daily Avg % Change (by Day of Week){title_suffix}", "Day of Week", "Pct", 
                               mean_data=dc, trimmed_mean_data=dcm, median_data=dmed, mode_data=dmode, outlier_data=doutlier,
                               trim_pct=median_pct, selected_measures=selected_measures),
-                make_line_chart(dv.index, dv, "Daily Var % Change (by Day of Week)", "Day of Week", "Var"),
-                make_line_chart(dr.index, dr, "Daily Avg Range (by Day of Week)", "Day of Week", "Price", 
+                make_line_chart(dv.index, dv, f"Daily Var % Change (by Day of Week){title_suffix}", "Day of Week", "Var"),
+                make_line_chart(dr.index, dr, f"Daily Avg Range (by Day of Week){title_suffix}", "Day of Week", "Price", 
                               mean_data=dr, trimmed_mean_data=drm, median_data=dmed_r, mode_data=dmode_r, outlier_data=doutlier_r,
                               trim_pct=median_pct, selected_measures=selected_measures),
-                make_line_chart(dvr.index, dvr, "Daily Var Range (by Day of Week)", "Day of Week", "Var"),
+                make_line_chart(dvr.index, dvr, f"Daily Var Range (by Day of Week){title_suffix}", "Day of Week", "Var"),
                 {'width': '100%', 'height': '20px', 'backgroundColor': '#28a745', 'borderRadius': '10px', 'transition': 'width 0.3s ease'},
                 {'width': '100%', 'height': '20px', 'backgroundColor': '#e9ecef', 'borderRadius': '10px', 'overflow': 'hidden', 'marginBottom': '10px', 'display': 'none'},
                 "Daily analysis complete!"
