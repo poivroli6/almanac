@@ -4,7 +4,7 @@ Features Module
 Statistical computations and feature engineering functions.
 """
 
-from .stats import compute_hourly_stats, compute_minute_stats
+from .stats import compute_hourly_stats, compute_minute_stats, compute_daily_stats, compute_monthly_stats
 from .filters import apply_filters, apply_time_filters, trim_extremes
 from .hod_lod import detect_hod_lod, compute_survival_curves
 from .conditional_filters import (
@@ -21,6 +21,8 @@ from .conditional_filters import (
 __all__ = [
     'compute_hourly_stats',
     'compute_minute_stats',
+    'compute_daily_stats',
+    'compute_monthly_stats',
     'apply_filters',
     'apply_time_filters',
     'trim_extremes',

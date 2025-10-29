@@ -14,6 +14,8 @@ from ..data_sources import load_minute_data, load_daily_data
 from ..features import (
     compute_hourly_stats,
     compute_minute_stats,
+    compute_daily_stats,
+    compute_monthly_stats,
     apply_filters,
     apply_time_filters,
     apply_quick_filter,
@@ -222,7 +224,7 @@ def create_sidebar_content():
             'statistical-section',
             'Statistical Visuals',
             [
-                html.Label("Median %", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
+                html.Label("Trimming of Mean %", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
                 dcc.Input(
                     id='median-percentage',
                     type='number',
@@ -233,7 +235,7 @@ def create_sidebar_content():
                     style={'width': '100%', 'marginBottom': '15px'},
                     placeholder='Enter percentage (0-50%)'
                 ),
-                html.Small("Percentage for median calculations (0-50%)", style={'color': '#666', 'fontSize': '11px', 'display': 'block', 'marginBottom': '15px'}),
+                html.Small("Percentage for Mean Trim calculations (0-50%)", style={'color': '#666', 'fontSize': '11px', 'display': 'block', 'marginBottom': '15px'}),
                 
                 html.Label("Display Measures", style={'fontWeight': 'bold', 'marginBottom': '10px'}),
                 dcc.Checklist(
@@ -242,14 +244,51 @@ def create_sidebar_content():
                         {'label': 'Mean', 'value': 'mean'},
                         {'label': 'Trimmed Mean', 'value': 'trimmed_mean'},
                         {'label': 'Median', 'value': 'median'},
-                        {'label': 'Mode', 'value': 'mode'}
+                        {'label': 'Mode', 'value': 'mode'},
+                        {'label': 'Outlier', 'value': 'outlier'}
                     ],
-                    value=['mean', 'trimmed_mean', 'median', 'mode'],
+                    value=['mean', 'trimmed_mean', 'median', 'mode', 'outlier'],
                     style={'marginBottom': '20px'}
                 ),
                 
-                # Calculate Buttons (separated)
+                # Calculate Buttons (Monthly/Daily/Hourly/Minutes)
                 html.Div([
+                    html.Button(
+                        '🗓️ Calculate Monthly',
+                        id='calc-monthly-btn',
+                        n_clicks=0,
+                        title='Run monthly analysis (January-December)',
+                        style={
+                            'width': '100%',
+                            'padding': '10px',
+                            'fontWeight': 'bold',
+                            'backgroundColor': '#20c997',
+                            'color': 'white',
+                            'border': 'none',
+                            'borderRadius': '4px',
+                            'cursor': 'pointer',
+                            'marginBottom': '5px',
+                            'fontSize': '13px'
+                        }
+                    ),
+                    html.Button(
+                        '📅 Calculate Daily',
+                        id='calc-daily-btn',
+                        n_clicks=0,
+                        title='Run day-of-week analysis (Monday-Sunday)',
+                        style={
+                            'width': '100%',
+                            'padding': '10px',
+                            'fontWeight': 'bold',
+                            'backgroundColor': '#6f42c1',
+                            'color': 'white',
+                            'border': 'none',
+                            'borderRadius': '4px',
+                            'cursor': 'pointer',
+                            'marginBottom': '5px',
+                            'fontSize': '13px'
+                        }
+                    ),
                     html.Button(
                         '📊 Calculate Hourly',
                         id='calc-hourly-btn',
@@ -648,6 +687,18 @@ def create_profile_layout():
             className='content-area',
             style={'marginLeft': '22%', 'padding': '20px'},
             children=[
+                html.H3("Monthly Statistics (By Month)"),
+                dcc.Graph(id='monthly-avg', config=get_png_download_config('monthly_avg_change')),
+                dcc.Graph(id='monthly-var', config=get_png_download_config('monthly_var_change')),
+                dcc.Graph(id='monthly-range', config=get_png_download_config('monthly_avg_range')),
+                dcc.Graph(id='monthly-var-range', config=get_png_download_config('monthly_var_range')),
+                
+                html.H3("Daily Statistics (Day-of-Week Analysis)"),
+                dcc.Graph(id='d-avg', config=get_png_download_config('daily_avg_change')),
+                dcc.Graph(id='d-var', config=get_png_download_config('daily_var_change')),
+                dcc.Graph(id='d-range', config=get_png_download_config('daily_avg_range')),
+                dcc.Graph(id='d-var-range', config=get_png_download_config('daily_var_range')),
+                
                 html.H3("Hourly Statistics"),
                 dcc.Graph(id='h-avg', config=get_png_download_config('hourly_avg_change')),
                 dcc.Graph(id='h-var', config=get_png_download_config('hourly_var_change')),
@@ -2052,6 +2103,184 @@ def register_profile_callbacks(app, cache):
             
         except Exception as e:
             print(f"Error in minute callback: {e}")
+            empty_fig = make_line_chart([], [], "Error occurred", "", "")
+            return (empty_fig,) * 4 + (
+                {'width': '0%', 'height': '20px', 'backgroundColor': '#dc3545', 'borderRadius': '10px', 'transition': 'width 0.3s ease'},
+                {'width': '100%', 'height': '20px', 'backgroundColor': '#e9ecef', 'borderRadius': '10px', 'overflow': 'hidden', 'marginBottom': '10px', 'display': 'none'},
+                "Error occurred"
+            )
+
+    # Register the monthly calculation callback
+    @app.callback(
+        [
+            Output('monthly-avg', 'figure', allow_duplicate=True),
+            Output('monthly-var', 'figure', allow_duplicate=True),
+            Output('monthly-range', 'figure', allow_duplicate=True),
+            Output('monthly-var-range', 'figure', allow_duplicate=True),
+            Output('calc-progress-bar', 'style', allow_duplicate=True),
+            Output('calc-progress-container', 'style', allow_duplicate=True),
+            Output('calc-status', 'children', allow_duplicate=True),
+        ],
+        Input('calc-monthly-btn', 'n_clicks'),
+        [
+            State('product-dropdown', 'value'),
+            State('filter-start-date', 'date'),
+            State('filter-end-date', 'date'),
+            State('minute-hour', 'value'),
+            State('filters', 'value'),
+            State('vol-threshold', 'value'),
+            State('pct-threshold', 'value'),
+            State('median-percentage', 'value'),
+            State('stat-measures', 'value'),
+            State('timeA-hour', 'value'),
+            State('timeA-minute', 'value'),
+            State('timeB-hour', 'value'),
+            State('timeB-minute', 'value'),
+        ],
+        prevent_initial_call=True
+    )
+    @cache.memoize(timeout=300)
+    def update_monthly_graphs(n, prod, start, end, mh, filters, vol_thr, pct_thr, median_pct, selected_measures, tA_h, tA_m, tB_h, tB_m):
+        """Callback to update monthly charts only."""
+        print(f"\n[DEBUG] Monthly Callback triggered: n_clicks={n}")
+        
+        if not n:
+            empty_fig = make_line_chart([], [], "No Data", "", "")
+            return (empty_fig,) * 4 + (
+                {'width': '0%', 'height': '20px', 'backgroundColor': '#007bff', 'borderRadius': '10px', 'transition': 'width 0.3s ease'},
+                {'width': '100%', 'height': '20px', 'backgroundColor': '#e9ecef', 'borderRadius': '10px', 'overflow': 'hidden', 'marginBottom': '10px', 'display': 'none'},
+                ""
+            )
+        
+        try:
+            import time
+            start_time = time.perf_counter()
+            
+            # Load data
+            daily = load_daily_data(prod, start, end)
+            minute = load_minute_data(prod, start, end)
+            
+            load_dur = time.perf_counter() - start_time
+            print(f"[PERF] Monthly data load took {load_dur:.2f}s")
+            
+            # Process data for monthly analysis
+            filtered_minute = minute
+            if filters:
+                filtered_minute = apply_filters(filtered_minute, daily, filters, vol_thr, pct_thr)
+            
+            # Compute monthly statistics by month
+            mc, mcm, mmed, mmode, moutlier, mv, mr, mrm, mmed_r, mmode_r, moutlier_r, mvr = compute_monthly_stats(filtered_minute, median_pct or 5.0)
+            
+            stats_dur = time.perf_counter() - start_time
+            print(f"[PERF] Monthly stats computation took {stats_dur:.2f}s")
+            
+            return (
+                make_line_chart(mc.index, mc, "Monthly Avg % Change (by Month)", "Month", "Pct", 
+                              mean_data=mc, trimmed_mean_data=mcm, median_data=mmed, mode_data=mmode, outlier_data=moutlier,
+                              trim_pct=median_pct, selected_measures=selected_measures),
+                make_line_chart(mv.index, mv, "Monthly Var % Change (by Month)", "Month", "Var"),
+                make_line_chart(mr.index, mr, "Monthly Avg Range (by Month)", "Month", "Price", 
+                              mean_data=mr, trimmed_mean_data=mrm, median_data=mmed_r, mode_data=mmode_r, outlier_data=moutlier_r,
+                              trim_pct=median_pct, selected_measures=selected_measures),
+                make_line_chart(mvr.index, mvr, "Monthly Var Range (by Month)", "Month", "Var"),
+                {'width': '100%', 'height': '20px', 'backgroundColor': '#20c997', 'borderRadius': '10px', 'transition': 'width 0.3s ease'},
+                {'width': '100%', 'height': '20px', 'backgroundColor': '#e9ecef', 'borderRadius': '10px', 'overflow': 'hidden', 'marginBottom': '10px', 'display': 'none'},
+                "Monthly analysis complete!"
+            )
+            
+        except Exception as e:
+            print(f"Error in monthly callback: {e}")
+            import traceback
+            traceback.print_exc()
+            empty_fig = make_line_chart([], [], "Error occurred", "", "")
+            return (empty_fig,) * 4 + (
+                {'width': '0%', 'height': '20px', 'backgroundColor': '#dc3545', 'borderRadius': '10px', 'transition': 'width 0.3s ease'},
+                {'width': '100%', 'height': '20px', 'backgroundColor': '#e9ecef', 'borderRadius': '10px', 'overflow': 'hidden', 'marginBottom': '10px', 'display': 'none'},
+                "Error occurred"
+            )
+
+    # Register the daily calculation callback
+    @app.callback(
+        [
+            Output('d-avg', 'figure', allow_duplicate=True),
+            Output('d-var', 'figure', allow_duplicate=True),
+            Output('d-range', 'figure', allow_duplicate=True),
+            Output('d-var-range', 'figure', allow_duplicate=True),
+            Output('calc-progress-bar', 'style', allow_duplicate=True),
+            Output('calc-progress-container', 'style', allow_duplicate=True),
+            Output('calc-status', 'children', allow_duplicate=True),
+        ],
+        Input('calc-daily-btn', 'n_clicks'),
+        [
+            State('product-dropdown', 'value'),
+            State('filter-start-date', 'date'),
+            State('filter-end-date', 'date'),
+            State('minute-hour', 'value'),
+            State('filters', 'value'),
+            State('vol-threshold', 'value'),
+            State('pct-threshold', 'value'),
+            State('median-percentage', 'value'),
+            State('stat-measures', 'value'),
+            State('timeA-hour', 'value'),
+            State('timeA-minute', 'value'),
+            State('timeB-hour', 'value'),
+            State('timeB-minute', 'value'),
+        ],
+        prevent_initial_call=True
+    )
+    @cache.memoize(timeout=300)
+    def update_daily_graphs(n, prod, start, end, mh, filters, vol_thr, pct_thr, median_pct, selected_measures, tA_h, tA_m, tB_h, tB_m):
+        """Callback to update daily day-of-week charts only."""
+        print(f"\n[DEBUG] Daily Callback triggered: n_clicks={n}")
+        
+        if not n:
+            empty_fig = make_line_chart([], [], "No Data", "", "")
+            return (empty_fig,) * 4 + (
+                {'width': '0%', 'height': '20px', 'backgroundColor': '#007bff', 'borderRadius': '10px', 'transition': 'width 0.3s ease'},
+                {'width': '100%', 'height': '20px', 'backgroundColor': '#e9ecef', 'borderRadius': '10px', 'overflow': 'hidden', 'marginBottom': '10px', 'display': 'none'},
+                ""
+            )
+        
+        try:
+            import time
+            start_time = time.perf_counter()
+            
+            # Load data
+            daily = load_daily_data(prod, start, end)
+            minute = load_minute_data(prod, start, end)
+            
+            load_dur = time.perf_counter() - start_time
+            print(f"[PERF] Daily data load took {load_dur:.2f}s")
+            
+            # Process daily data for day-of-week analysis
+            filtered_minute = minute
+            if filters:
+                filtered_minute = apply_filters(filtered_minute, daily, filters, vol_thr, pct_thr)
+            
+            # Compute daily statistics by day of week
+            dc, dcm, dmed, dmode, doutlier, dv, dr, drm, dmed_r, dmode_r, doutlier_r, dvr = compute_daily_stats(filtered_minute, median_pct or 5.0)
+            
+            stats_dur = time.perf_counter() - start_time
+            print(f"[PERF] Daily stats computation took {stats_dur:.2f}s")
+            
+            return (
+                make_line_chart(dc.index, dc, "Daily Avg % Change (by Day of Week)", "Day of Week", "Pct", 
+                              mean_data=dc, trimmed_mean_data=dcm, median_data=dmed, mode_data=dmode, outlier_data=doutlier,
+                              trim_pct=median_pct, selected_measures=selected_measures),
+                make_line_chart(dv.index, dv, "Daily Var % Change (by Day of Week)", "Day of Week", "Var"),
+                make_line_chart(dr.index, dr, "Daily Avg Range (by Day of Week)", "Day of Week", "Price", 
+                              mean_data=dr, trimmed_mean_data=drm, median_data=dmed_r, mode_data=dmode_r, outlier_data=doutlier_r,
+                              trim_pct=median_pct, selected_measures=selected_measures),
+                make_line_chart(dvr.index, dvr, "Daily Var Range (by Day of Week)", "Day of Week", "Var"),
+                {'width': '100%', 'height': '20px', 'backgroundColor': '#28a745', 'borderRadius': '10px', 'transition': 'width 0.3s ease'},
+                {'width': '100%', 'height': '20px', 'backgroundColor': '#e9ecef', 'borderRadius': '10px', 'overflow': 'hidden', 'marginBottom': '10px', 'display': 'none'},
+                "Daily analysis complete!"
+            )
+            
+        except Exception as e:
+            print(f"Error in daily callback: {e}")
+            import traceback
+            traceback.print_exc()
             empty_fig = make_line_chart([], [], "Error occurred", "", "")
             return (empty_fig,) * 4 + (
                 {'width': '0%', 'height': '20px', 'backgroundColor': '#dc3545', 'borderRadius': '10px', 'transition': 'width 0.3s ease'},
