@@ -116,64 +116,112 @@ def create_preset_row(preset_id, preset_name, day_count, logic_operator="AND"):
 
 def build_filter_panel(prefix: str, title: str, header_color: str = '#2196f3'):
     """
-    Build a lightweight, prefixed filter panel for a given timeframe.
-    Phase 1: Visual/structural split only (per-timeframe IDs).
+    Build a specialized filter panel for each timeframe while preserving
+    IDs expected by callbacks. Unknown filter values are allowed (no-op) to
+    keep buttons working until logic is added.
     """
-    hours = [{'label': h, 'value': h} for h in range(0, 24) if h not in (5, 6)]
-    minutes = [{'label': m, 'value': m} for m in range(0, 60)]
+    if prefix == 'monthly':
+        filter_options = [
+            {'label': '📈 High VIX Months', 'value': 'high_vix'},
+            {'label': '🐂 Bull Years', 'value': 'bull_years'},
+            {'label': '🔥 Inflation Periods', 'value': 'inflation_periods'},
+            {'label': 'Q1 (Jan–Mar)', 'value': 'q1'},
+            {'label': 'Q2 (Apr–Jun)', 'value': 'q2'},
+            {'label': 'Q3 (Jul–Sep)', 'value': 'q3'},
+            {'label': 'Q4 (Oct–Dec)', 'value': 'q4'},
+            {'label': '✂️ Exclude Top/Bottom 5%', 'value': 'trim_extremes'},
+        ]
+        controls = [
+            html.Div([
+                html.Label('%∆ Threshold', style={'fontSize': '11px'}),
+                dcc.Input(id=f'{prefix}-pct-threshold', type='number', placeholder='e.g., 2.0', style={'width': '100%'})
+            ], style={'marginBottom': '8px'})
+        ]
+    elif prefix == 'daily':
+        filter_options = [
+            {'label': '📈 Prev-Day: Close > Open (Bullish)', 'value': 'prev_pos'},
+            {'label': '📉 Prev-Day: Close < Open (Bearish)', 'value': 'prev_neg'},
+            {'label': '🚀 Prev-Day: %∆ ≥ Threshold', 'value': 'prev_pct_pos'},
+            {'label': '💥 Prev-Day: %∆ ≤ -Threshold', 'value': 'prev_pct_neg'},
+            {'label': '📊 Prev-Day: Volume ≥ Threshold', 'value': 'relvol_gt'},
+            {'label': '✂️ Exclude Top/Bottom 5%', 'value': 'trim_extremes'},
+            {'label': '📅 Monday', 'value': 'monday'},
+            {'label': '📅 Tuesday', 'value': 'tuesday'},
+            {'label': '📅 Wednesday', 'value': 'wednesday'},
+            {'label': '📅 Thursday', 'value': 'thursday'},
+            {'label': '📅 Friday', 'value': 'friday'},
+        ]
+        controls = [
+            html.Div([
+                html.Label('%∆ Threshold', style={'fontSize': '11px'}),
+                dcc.Input(id=f'{prefix}-pct-threshold', type='number', placeholder='e.g., 1.0', style={'width': '100%'})
+            ], style={'marginBottom': '8px'}),
+            html.Div([
+                html.Label('Volume Multiplier', style={'fontSize': '11px'}),
+                dcc.Input(id=f'{prefix}-vol-threshold', type='number', placeholder='e.g., 1.5', style={'width': '100%'})
+            ], style={'marginBottom': '8px'})
+        ]
+    elif prefix == 'hourly':
+        filter_options = [
+            {'label': '📅 FOMC Day', 'value': 'fomc_days'},
+            {'label': '📊 CPI Day', 'value': 'cpi_days'},
+            {'label': '📈 Prev Hour %∆ > Threshold', 'value': 'prev_hour_pct'},
+            {'label': '📊 High Volume Hour', 'value': 'high_vol_hour'},
+            {'label': '⚡ Power Hour Only (15:00)', 'value': 'power_hour'},
+            {'label': '✂️ Exclude Top/Bottom 5%', 'value': 'trim_extremes'},
+        ]
+        controls = [
+            html.Div([
+                html.Label('%∆ Threshold', style={'fontSize': '11px'}),
+                dcc.Input(id=f'{prefix}-pct-threshold', type='number', placeholder='e.g., 0.5', style={'width': '100%'})
+            ], style={'marginBottom': '8px'}),
+            html.Div([
+                html.Label('Volume Multiplier', style={'fontSize': '11px'}),
+                dcc.Input(id=f'{prefix}-vol-threshold', type='number', placeholder='e.g., 1.5', style={'width': '100%'})
+            ], style={'marginBottom': '8px'})
+        ]
+    elif prefix == 'minute':
+        filter_options = [
+            {'label': '📈 Prev Hour +0.5–1.5 %', 'value': 'prev_hour_range'},
+            {'label': '📊 Minute Volume > 2× Avg', 'value': 'volume_spike'},
+            {'label': '🔝 After HOD', 'value': 'after_hod'},
+            {'label': '🔻 After LOD', 'value': 'after_lod'},
+            {'label': '📊 VWAP Cross Only', 'value': 'vwap_cross'},
+            {'label': '✂️ Exclude Top/Bottom 5%', 'value': 'trim_extremes'},
+        ]
+        controls = [
+            html.Div([
+                html.Label('Volume Multiplier', style={'fontSize': '11px'}),
+                dcc.Input(id=f'{prefix}-vol-threshold', type='number', placeholder='e.g., 2.0', style={'width': '100%'})
+            ], style={'marginBottom': '8px'})
+        ]
+    else:
+        filter_options = []
+        controls = []
 
-    # Core filter checklist (re-uses the same labels/values as global)
-    filter_options = [
-        {'label': '📈 Prev-Day: Close > Open (Bullish)', 'value': 'prev_pos'},
-        {'label': '📉 Prev-Day: Close < Open (Bearish)', 'value': 'prev_neg'},
-        {'label': '🚀 Prev-Day: %∆ ≥ Threshold (Strong Move Up)', 'value': 'prev_pct_pos'},
-        {'label': '💥 Prev-Day: %∆ ≤ -Threshold (Strong Move Down)', 'value': 'prev_pct_neg'},
-        {'label': '📊 Prev-Day: High Relative Volume (≥ Threshold)', 'value': 'relvol_gt'},
-        {'label': '📉 Prev-Day: Low Relative Volume (≤ Threshold)', 'value': 'relvol_lt'},
-        {'label': '⏰ Time A > Time B (Custom Time Comparison)', 'value': 'timeA_gt_timeB'},
-        {'label': '⏰ Time A < Time B (Custom Time Comparison)', 'value': 'timeA_lt_timeB'},
-        {'label': '✂️ Exclude Top/Bottom 5% (Trim Extremes)', 'value': 'trim_extremes'},
-        {'label': '📅 Monday', 'value': 'monday'},
-        {'label': '📅 Tuesday', 'value': 'tuesday'},
-        {'label': '📅 Wednesday', 'value': 'wednesday'},
-        {'label': '📅 Thursday', 'value': 'thursday'},
-        {'label': '📅 Friday', 'value': 'friday'},
-    ]
-
-    return html.Div([
+    # Build panel with visible controls
+    panel_content = html.Div([
         html.Div(title, style={'fontWeight': 'bold', 'color': 'white', 'backgroundColor': header_color,
                                'padding': '6px 10px', 'borderRadius': '4px', 'marginBottom': '8px', 'fontSize': '12px'}),
         dcc.Checklist(id=f'{prefix}-filters', options=filter_options, value=[], style={'marginBottom': '8px', 'fontSize': '12px'}),
-
-        html.Div([
-            html.Label('Relative Volume Multiplier', style={'fontSize': '11px'}),
-            dcc.Input(id=f'{prefix}-vol-threshold', type='number', placeholder='e.g., 1.5', style={'width': '100%'})
-        ], style={'marginBottom': '8px'}),
-
-        html.Div([
-            html.Label('%∆ Threshold', style={'fontSize': '11px'}),
-            dcc.Input(id=f'{prefix}-pct-threshold', type='number', placeholder='e.g., 1.0', style={'width': '100%'})
-        ], style={'marginBottom': '8px'}),
-
-        html.Div([
-            html.Label('Time A', style={'fontSize': '11px'}),
-            html.Div([
-                dcc.Dropdown(id=f'{prefix}-timeA-hour', options=hours, placeholder='Hour', style={'width': '49%'}),
-                dcc.Dropdown(id=f'{prefix}-timeA-minute', options=minutes, placeholder='Min', style={'width': '49%'})
-            ], style={'display': 'flex', 'gap': '2%'}),
-        ], style={'marginBottom': '8px'}),
-
-        html.Div([
-            html.Label('Time B', style={'fontSize': '11px'}),
-            html.Div([
-                dcc.Dropdown(id=f'{prefix}-timeB-hour', options=hours, placeholder='Hour', style={'width': '49%'}),
-                dcc.Dropdown(id=f'{prefix}-timeB-minute', options=minutes, placeholder='Min', style={'width': '49%'})
-            ], style={'display': 'flex', 'gap': '2%'}),
-        ], style={'marginBottom': '8px'}),
-
-        # Store to allow future per-panel persistence if needed
+        *controls,
         dcc.Store(id=f'{prefix}-filters-store', data=[], storage_type='session')
     ], style={'border': '1px solid #ddd', 'borderRadius': '6px', 'padding': '10px', 'backgroundColor': '#fafafa'})
+    
+    # For Monthly: add hidden fields that callbacks expect but aren't shown in UI
+    if prefix == 'monthly':
+        hours = [{'label': h, 'value': h} for h in range(0, 24) if h not in (5, 6)]
+        minutes = [{'label': m, 'value': m} for m in range(0, 60)]
+        hidden_fields = html.Div([
+            dcc.Input(id='monthly-vol-threshold', type='number', style={'display': 'none'}),
+            dcc.Dropdown(id='monthly-timeA-hour', options=hours, style={'display': 'none'}),
+            dcc.Dropdown(id='monthly-timeA-minute', options=minutes, style={'display': 'none'}),
+            dcc.Dropdown(id='monthly-timeB-hour', options=hours, style={'display': 'none'}),
+            dcc.Dropdown(id='monthly-timeB-minute', options=minutes, style={'display': 'none'}),
+        ])
+        return html.Div([panel_content, hidden_fields])
+    
+    return panel_content
 
 def create_sidebar_content():
     """Create accordion-based sidebar content with collapsible sections."""
@@ -269,6 +317,55 @@ def create_sidebar_content():
             ],
             is_open=True,
             icon='📈'
+        ),
+        
+        # Date Range Section
+        create_accordion_section(
+            'date-range-section',
+            '📅 Date Range',
+            [
+                html.Div([
+                    html.Div([
+                        html.Label("Start Date", style={'fontSize': '11px', 'marginBottom': '5px', 'color': '#666'}),
+                        dcc.DatePickerSingle(
+                            id='filter-start-date',
+                            display_format='YYYY-MM-DD',
+                            placeholder='Select start date...',
+                            style={'fontSize': '11px'}
+                        )
+                    ], style={'width': '48%', 'display': 'inline-block', 'marginRight': '4%'}),
+                    
+                    html.Div([
+                        html.Label("End Date", style={'fontSize': '11px', 'marginBottom': '5px', 'color': '#666'}),
+                        dcc.DatePickerSingle(
+                            id='filter-end-date',
+                            display_format='YYYY-MM-DD',
+                            placeholder='Select end date...',
+                            style={'fontSize': '11px'}
+                        )
+                    ], style={'width': '48%', 'display': 'inline-block'})
+                ], style={'marginBottom': '15px'}),
+                
+                html.Button(
+                    "📊 Max Date Range",
+                    id='max-date-range-btn',
+                    style={
+                        'width': '100%',
+                        'padding': '8px',
+                        'marginBottom': '10px',
+                        'backgroundColor': '#27ae60',
+                        'color': 'white',
+                        'border': 'none',
+                        'borderRadius': '4px',
+                        'cursor': 'pointer',
+                        'fontSize': '12px',
+                        'fontWeight': 'bold'
+                    },
+                    title="Set date range to first and last available dates for selected product"
+                )
+            ],
+            is_open=True,
+            icon='📅'
         ),
         
         # Statistical Visuals Section
@@ -447,223 +544,23 @@ def create_sidebar_content():
             is_open=True,
             icon='⏱️'
         ),
-        
-        # Filters Section
-        create_accordion_section(
-            'filters-section',
-            'Filters & Conditions',
-            [
-                html.Div(id='sample-size-display', style={
-                    'backgroundColor': '#f8f9fa', 
-                    'padding': '10px', 
-                    'borderRadius': '5px',
-                    'marginTop': '15px',
-                    'marginBottom': '15px'
-                }),
-                
-                html.Hr(style={'margin': '15px 0'}),
-                
-                # Filter Presets Section - Redesigned
-                html.Div([
-                    html.Label("🎯 Filter Presets", style={'fontWeight': 'bold', 'marginBottom': '8px', 'color': '#2c3e50'}),
-                     html.Button(
-                         "Apply Scenario",
-                         id='apply-preset-btn',
-                         style={
-                             'width': '100%',
-                             'padding': '8px',
-                             'marginBottom': '8px',
-                             'backgroundColor': '#3498db',
-                             'color': 'white',
-                             'border': 'none',
-                             'borderRadius': '4px',
-                             'cursor': 'pointer',
-                             'fontSize': '12px',
-                             'fontWeight': 'bold'
-                         }
-                     ),
-                    dcc.Dropdown(
-                        id='filter-presets-dropdown',
-                        placeholder="Select a preset...",
-                        value=None,  # Default to None as requested
-                        options=[
-                            {'label': '📈 Bullish Days (Close > Open)', 'value': 'bullish'},
-                            {'label': '📉 Bearish Days (Close < Open)', 'value': 'bearish'},
-                            {'label': '🚀 Strong Moves (%∆ ≥ Threshold)', 'value': 'strong_moves'},
-                            {'label': '📊 High Volume Days', 'value': 'high_volume'},
-                            {'label': '📅 Weekdays Only', 'value': 'weekdays'},
-                            {'label': '🔄 All Conditions (No Filters)', 'value': 'all'},
-                        ],
-                        style={'marginBottom': '15px', 'fontSize': '12px'},
-                        clearable=True
-                    )
-                ]),
-                
-                # Day of Interest Section
-                html.Label("📅 Day of Interest", style={'fontWeight': 'bold', 'marginBottom': '10px', 'color': '#2c3e50'}),
-                html.Div([
-                    dcc.Dropdown(
-                        id='day-of-interest-dropdown',
-                        options=[
-                            {'label': '📅 Today', 'value': 'today'},
-                            {'label': '📅 Yesterday', 'value': 'yesterday'},
-                            {'label': '📅 T-2 (Day Before Yesterday)', 'value': 't-2'},
-                            {'label': '📅 T-3 (3 Days Ago)', 'value': 't-3'}
-                        ],
-                        value='today',
-                        placeholder='Select day of interest...',
-                        style={'fontSize': '12px', 'marginBottom': '10px'},
-                        clearable=False
-                    ),
-                    html.Small("💡 Focus analysis on a specific trading day", 
-                              style={'color': '#666', 'fontSize': '10px', 'display': 'block'})
-                ], style={'marginBottom': '15px'}),
-                
-                # Date Range Controls Section
-                html.Label("📅 Date Range Controls", style={'fontWeight': 'bold', 'marginBottom': '10px', 'color': '#2c3e50'}),
-                html.Div([
-                    html.Button(
-                        "📊 Max Date Range",
-                        id='max-date-range-btn',
-                        style={
-                            'width': '100%',
-                            'padding': '8px',
-                            'marginBottom': '10px',
-                            'backgroundColor': '#27ae60',
-                            'color': 'white',
-                            'border': 'none',
-                            'borderRadius': '4px',
-                            'cursor': 'pointer',
-                            'fontSize': '12px',
-                            'fontWeight': 'bold'
-                        },
-                        title="Set date range to first and last available dates for selected product"
-                    )
-                ]),
-                
-                html.Div([
-                    html.Div([
-                        html.Label("Start Date", style={'fontSize': '11px', 'marginBottom': '5px', 'color': '#666'}),
-                        dcc.DatePickerSingle(
-                            id='filter-start-date',
-                            display_format='YYYY-MM-DD',
-                            placeholder='Select start date...',
-                            style={'fontSize': '11px'}
-                        )
-                    ], style={'width': '48%', 'display': 'inline-block', 'marginRight': '4%'}),
-                    
-                    html.Div([
-                        html.Label("End Date", style={'fontSize': '11px', 'marginBottom': '5px', 'color': '#666'}),
-                        dcc.DatePickerSingle(
-                            id='filter-end-date',
-                            display_format='YYYY-MM-DD',
-                            placeholder='Select end date...',
-                            style={'fontSize': '11px'}
-                        )
-                    ], style={'width': '48%', 'display': 'inline-block'})
-                ], style={'marginBottom': '15px'}),
-                
-                # Dynamic Scenario Rows Container
-                html.Div([
-                    html.Label("📋 Active Scenarios", style={'fontWeight': 'bold', 'marginBottom': '8px', 'color': '#2c3e50'}),
-                    html.Div(id='dynamic-preset-rows', children=[], style={'marginBottom': '15px'}),
-                    
-                    # "All Instances" row (always at bottom)
-                    html.Div([
-                        html.Span("📊 All Instances", style={'fontWeight': 'bold', 'marginRight': '10px'}),
-                        html.Span(id='total-cases-display', children="77 cases", 
-                                style={'fontSize': '12px', 'color': '#666'})
-                    ], style={'marginBottom': '10px', 'padding': '8px 12px', 'backgroundColor': '#f8f9fa', 'borderRadius': '3px', 'border': '1px solid #dee2e6'}),
-                ]),
-                
-                # Preset Management Section
-                html.Div([
-                    html.Label("💾 Save/Load Presets", style={'fontWeight': 'bold', 'marginBottom': '8px', 'color': '#2c3e50'}),
-                    html.Div([
-                        html.Div([
-                            dcc.Input(
-                                id='preset-name-input',
-                                placeholder='Enter preset name...',
-                                style={'width': '60%', 'fontSize': '11px', 'marginRight': '5px'}
-                            ),
-                            html.Button(
-                                '💾 Save',
-                                id='save-preset-btn',
-                                style={'width': '35%', 'fontSize': '11px', 'padding': '5px', 'backgroundColor': '#28a745', 'color': 'white', 'border': 'none', 'borderRadius': '3px'}
-                            )
-                        ], style={'marginBottom': '8px'}),
-                        
-                        html.Div([
-                            dcc.Dropdown(
-                                id='preset-dropdown',
-                                placeholder='Load preset...',
-                                options=[],
-                                style={'width': '60%', 'fontSize': '11px', 'marginRight': '5px'}
-                            ),
-                            html.Button(
-                                '🗑️ Delete',
-                                id='delete-preset-btn',
-                                style={'width': '35%', 'fontSize': '11px', 'padding': '5px', 'backgroundColor': '#dc3545', 'color': 'white', 'border': 'none', 'borderRadius': '3px'}
-                            )
-                        ])
-                    ]),
-                    html.Div(id='preset-status-message', style={'marginTop': '8px', 'fontSize': '11px'}),
-                    dcc.Store(id='presets-store', data={}, storage_type='session')
-                ], style={'marginBottom': '15px', 'padding': '10px', 'backgroundColor': '#f8f9fa', 'borderRadius': '5px', 'border': '1px solid #dee2e6'}),
-                
-                html.Label("🔍 Custom Filter Options", style={'fontWeight': 'bold', 'marginBottom': '10px', 'color': '#2c3e50'}),
-                html.Small("💡 Tip: Select multiple filters to narrow down your analysis", 
-                          style={'color': '#666', 'fontSize': '10px', 'marginBottom': '8px', 'display': 'block'}),
-                dcc.Checklist(
-                    id='filters',
-                    options=filter_options,
-                    value=[],  # Start with no filters selected - let user choose
-                    style={'marginBottom': '15px'},
-                    inputStyle={'marginRight': '8px'},
-                    labelStyle={'fontSize': '11px', 'lineHeight': '1.3', 'marginBottom': '4px'}
-                ),
-                
-                html.Label("⚙️ Filter Thresholds", style={'fontWeight': 'bold', 'marginBottom': '10px', 'color': '#2c3e50'}),
-                
-                html.Div([
-                    html.Label("📊 Relative Volume Multiplier", style={'fontSize': '11px', 'marginBottom': '2px'}),
-                dcc.Input(
-                    id='vol-threshold',
-                    type='number',
-                        placeholder='e.g., 1.5 (50% above average)', 
-                        style={'width': '100%', 'marginBottom': '8px', 'fontSize': '11px'},
-                    debounce=True
-                    )
-                ]),
-                
-                html.Div([
-                    html.Label("📈 %∆ Threshold", style={'fontSize': '11px', 'marginBottom': '2px'}),
-                dcc.Input(
-                    id='pct-threshold',
-                    type='number',
-                        placeholder='e.g., 1.0 (1% move)', 
-                        style={'width': '100%', 'marginBottom': '8px', 'fontSize': '11px'},
-                    debounce=True
-                    )
-                ]),
-                
-                html.Hr(style={'margin': '15px 0'}),
-                
-                html.Label("Time A", style={'fontWeight': 'bold'}),
-                html.Div([
-                    dcc.Dropdown(id='timeA-hour', options=[{'label': h, 'value': h} for h in range(0, 24) if h not in (5, 6)], placeholder='Hour'),
-                    dcc.Dropdown(id='timeA-minute', options=[{'label': m, 'value': m} for m in range(0, 60)], placeholder='Min')
-                ], style={'display': 'flex', 'gap': '10px', 'marginBottom': '10px'}),
-                
-                html.Label("Time B", style={'fontWeight': 'bold'}),
-                html.Div([
-                    dcc.Dropdown(id='timeB-hour', options=[{'label': h, 'value': h} for h in range(0, 24) if h not in (5, 6)], placeholder='Hour'),
-                    dcc.Dropdown(id='timeB-minute', options=[{'label': m, 'value': m} for m in range(0, 60)], placeholder='Min')
-                ], style={'display': 'flex', 'gap': '10px', 'marginBottom': '10px'})
-            ],
-            is_open=True,
-            icon='🔧'
-        ),
+
+        # Hidden global fields required by callbacks (fallback only)
+        html.Div([
+            dcc.Checklist(id='filters', options=[], value=[]),
+            dcc.Input(id='vol-threshold', type='number'),
+            dcc.Input(id='pct-threshold', type='number'),
+            dcc.Dropdown(id='timeA-hour'),
+            dcc.Dropdown(id='timeA-minute'),
+            dcc.Dropdown(id='timeB-hour'),
+            dcc.Dropdown(id='timeB-minute'),
+            html.Div(id='dynamic-preset-rows'),
+            html.Span(id='total-cases-display'),
+            html.Div(id='preset-status-message'),
+            dcc.Store(id='active-presets-store', data=[], storage_type='session'),
+            dcc.Store(id='presets-store', data={}, storage_type='session'),
+            html.Div(id='sample-size-display')
+        ], style={'display': 'none'}),
         
         # Action Buttons section removed - calculate button moved to top
         
