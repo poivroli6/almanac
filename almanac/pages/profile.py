@@ -114,6 +114,67 @@ def create_preset_row(preset_id, preset_name, day_count, logic_operator="AND"):
     ], id={'type': 'preset-row', 'index': preset_id})
 
 
+def build_filter_panel(prefix: str, title: str, header_color: str = '#2196f3'):
+    """
+    Build a lightweight, prefixed filter panel for a given timeframe.
+    Phase 1: Visual/structural split only (per-timeframe IDs).
+    """
+    hours = [{'label': h, 'value': h} for h in range(0, 24) if h not in (5, 6)]
+    minutes = [{'label': m, 'value': m} for m in range(0, 60)]
+
+    # Core filter checklist (re-uses the same labels/values as global)
+    filter_options = [
+        {'label': '📈 Prev-Day: Close > Open (Bullish)', 'value': 'prev_pos'},
+        {'label': '📉 Prev-Day: Close < Open (Bearish)', 'value': 'prev_neg'},
+        {'label': '🚀 Prev-Day: %∆ ≥ Threshold (Strong Move Up)', 'value': 'prev_pct_pos'},
+        {'label': '💥 Prev-Day: %∆ ≤ -Threshold (Strong Move Down)', 'value': 'prev_pct_neg'},
+        {'label': '📊 Prev-Day: High Relative Volume (≥ Threshold)', 'value': 'relvol_gt'},
+        {'label': '📉 Prev-Day: Low Relative Volume (≤ Threshold)', 'value': 'relvol_lt'},
+        {'label': '⏰ Time A > Time B (Custom Time Comparison)', 'value': 'timeA_gt_timeB'},
+        {'label': '⏰ Time A < Time B (Custom Time Comparison)', 'value': 'timeA_lt_timeB'},
+        {'label': '✂️ Exclude Top/Bottom 5% (Trim Extremes)', 'value': 'trim_extremes'},
+        {'label': '📅 Monday', 'value': 'monday'},
+        {'label': '📅 Tuesday', 'value': 'tuesday'},
+        {'label': '📅 Wednesday', 'value': 'wednesday'},
+        {'label': '📅 Thursday', 'value': 'thursday'},
+        {'label': '📅 Friday', 'value': 'friday'},
+    ]
+
+    return html.Div([
+        html.Div(title, style={'fontWeight': 'bold', 'color': 'white', 'backgroundColor': header_color,
+                               'padding': '6px 10px', 'borderRadius': '4px', 'marginBottom': '8px', 'fontSize': '12px'}),
+        dcc.Checklist(id=f'{prefix}-filters', options=filter_options, value=[], style={'marginBottom': '8px', 'fontSize': '12px'}),
+
+        html.Div([
+            html.Label('Relative Volume Multiplier', style={'fontSize': '11px'}),
+            dcc.Input(id=f'{prefix}-vol-threshold', type='number', placeholder='e.g., 1.5', style={'width': '100%'})
+        ], style={'marginBottom': '8px'}),
+
+        html.Div([
+            html.Label('%∆ Threshold', style={'fontSize': '11px'}),
+            dcc.Input(id=f'{prefix}-pct-threshold', type='number', placeholder='e.g., 1.0', style={'width': '100%'})
+        ], style={'marginBottom': '8px'}),
+
+        html.Div([
+            html.Label('Time A', style={'fontSize': '11px'}),
+            html.Div([
+                dcc.Dropdown(id=f'{prefix}-timeA-hour', options=hours, placeholder='Hour', style={'width': '49%'}),
+                dcc.Dropdown(id=f'{prefix}-timeA-minute', options=minutes, placeholder='Min', style={'width': '49%'})
+            ], style={'display': 'flex', 'gap': '2%'}),
+        ], style={'marginBottom': '8px'}),
+
+        html.Div([
+            html.Label('Time B', style={'fontSize': '11px'}),
+            html.Div([
+                dcc.Dropdown(id=f'{prefix}-timeB-hour', options=hours, placeholder='Hour', style={'width': '49%'}),
+                dcc.Dropdown(id=f'{prefix}-timeB-minute', options=minutes, placeholder='Min', style={'width': '49%'})
+            ], style={'display': 'flex', 'gap': '2%'}),
+        ], style={'marginBottom': '8px'}),
+
+        # Store to allow future per-panel persistence if needed
+        dcc.Store(id=f'{prefix}-filters-store', data=[], storage_type='session')
+    ], style={'border': '1px solid #ddd', 'borderRadius': '6px', 'padding': '10px', 'backgroundColor': '#fafafa'})
+
 def create_sidebar_content():
     """Create accordion-based sidebar content with collapsible sections."""
     
@@ -289,7 +350,8 @@ def create_sidebar_content():
                         'cursor': 'pointer',
                         'fontSize': '14px'
                     }
-                )
+                ),
+                build_filter_panel('monthly', 'Monthly Filters', '#00bfa5')
             ],
             is_open=True,
             icon='🗓️'
@@ -315,7 +377,8 @@ def create_sidebar_content():
                         'cursor': 'pointer',
                         'fontSize': '14px'
                     }
-                )
+                ),
+                build_filter_panel('daily', 'Daily Filters', '#7e57c2')
             ],
             is_open=True,
             icon='📅'
@@ -341,7 +404,8 @@ def create_sidebar_content():
                         'cursor': 'pointer',
                         'fontSize': '14px'
                     }
-                )
+                ),
+                build_filter_panel('hourly', 'Hourly Filters', '#2196f3')
             ],
             is_open=True,
             icon='📊'
@@ -376,7 +440,9 @@ def create_sidebar_content():
                     value=9,
                     clearable=False,
                     style={'marginBottom': '0px'}
-                )
+                ),
+                html.Div(style={'height': '8px'}),
+                build_filter_panel('minute', 'Minute Filters', '#43a047')
             ],
             is_open=True,
             icon='⏱️'
@@ -825,6 +891,10 @@ def register_profile_callbacks_old_DISABLED(app, cache):
         print(f"[DEBUG] Parameters: prod={prod}, start={start}, end={end}, mh={mh}")
         print(f"[DEBUG] filters={filters}, vol_thr={vol_thr}, pct_thr={pct_thr}")
         print(f"[DEBUG] median_pct={median_pct}, selected_measures={selected_measures}")
+        # Defaults for per-panel overrides
+        active_filters_hr = filters
+        vol_thr_hr = vol_thr
+        pct_thr_hr = pct_thr
         
         # Initialize HOD/LOD variables
         empty_fig = make_line_chart([], [], "No Data", "", "")
@@ -835,6 +905,20 @@ def register_profile_callbacks_old_DISABLED(app, cache):
         
         try:
             debug_msgs = []
+            # Panel-specific states (hourly)
+            try:
+                ctx_states = dash.callback_context.states
+            except Exception:
+                ctx_states = {}
+            active_filters_hr = ctx_states.get('hourly-filters.value', None)
+            vol_thr_hr = ctx_states.get('hourly-vol-threshold.value', None)
+            pct_thr_hr = ctx_states.get('hourly-pct-threshold.value', None)
+            if not active_filters_hr:
+                active_filters_hr = filters
+            if vol_thr_hr is None:
+                vol_thr_hr = vol_thr
+            if pct_thr_hr is None:
+                pct_thr_hr = pct_thr
             # Try loading from database first
             try:
                 daily = load_daily_data(prod, start, end)
@@ -869,7 +953,13 @@ def register_profile_callbacks_old_DISABLED(app, cache):
             # Apply additional filters
             try:
                 pre_rows = len(filtered_minute)
-                filtered_minute = apply_filters(filtered_minute, daily, filters, vol_thr, pct_thr)
+                if 'active_filters_hr' not in locals():
+                    active_filters_hr = filters
+                if 'vol_thr_hr' not in locals():
+                    vol_thr_hr = vol_thr
+                if 'pct_thr_hr' not in locals():
+                    pct_thr_hr = pct_thr
+                filtered_minute = apply_filters(filtered_minute, daily, active_filters_hr, vol_thr_hr, pct_thr_hr)
                 debug_msgs.append(f"After base filters [{','.join(filters or [])}]: {pre_rows} -> {len(filtered_minute)} rows")
             except Exception as filter_error:
                 import traceback
@@ -1627,6 +1717,10 @@ def register_profile_callbacks(app, cache):
         print(f"[DEBUG] Parameters: prod={prod}, start={start}, end={end}, mh={mh}")
         print(f"[DEBUG] filters={filters}, vol_thr={vol_thr}, pct_thr={pct_thr}")
         print(f"[DEBUG] median_pct={median_pct}, selected_measures={selected_measures}")
+        # Defaults for per-panel overrides
+        active_filters_hr = filters
+        vol_thr_hr = vol_thr
+        pct_thr_hr = pct_thr
         
         # Initialize HOD/LOD variables
         empty_fig = make_line_chart([], [], "No Data", "", "")
@@ -1692,7 +1786,7 @@ def register_profile_callbacks(app, cache):
             # Apply additional filters
             try:
                 pre_rows = len(filtered_minute)
-                filtered_minute = apply_filters(filtered_minute, daily, filters, vol_thr, pct_thr)
+                filtered_minute = apply_filters(filtered_minute, daily, active_filters_hr, vol_thr_hr, pct_thr_hr)
                 filt_dur = time.perf_counter() - start_time
                 print(f"[PERF] Base filters took {filt_dur:.2f}s (rows {pre_rows} -> {len(filtered_minute)})")
                 debug_msgs.append(f"After base filters [{','.join(filters or [])}]: {pre_rows} -> {len(filtered_minute)} rows")
@@ -2127,6 +2221,17 @@ def register_profile_callbacks(app, cache):
             
             # Process minute data
             filtered_minute = minute
+            # Prefer minute-prefixed filters if provided
+            try:
+                ctx_states = dash.callback_context.states
+            except Exception:
+                ctx_states = {}
+            minute_filters_val = ctx_states.get('minute-filters.value', None)
+            minute_vol = ctx_states.get('minute-vol-threshold.value', None)
+            minute_pct = ctx_states.get('minute-pct-threshold.value', None)
+            if minute_filters_val:
+                filtered_minute = apply_filters(filtered_minute, daily, minute_filters_val, minute_vol, minute_pct)
+
             mc, mcm, mmed, mmode, moutlier, mv, mr, mrm, mmed_r, mmode_r, moutlier_r, mvr = compute_minute_stats(filtered_minute, mh, median_pct)
             
             # Count cases for dynamic titles - use total trading days if no filters
@@ -2187,11 +2292,20 @@ def register_profile_callbacks(app, cache):
             State('timeA-minute', 'value'),
             State('timeB-hour', 'value'),
             State('timeB-minute', 'value'),
+            # Monthly-prefixed panel states
+            State('monthly-filters', 'value'),
+            State('monthly-vol-threshold', 'value'),
+            State('monthly-pct-threshold', 'value'),
+            State('monthly-timeA-hour', 'value'),
+            State('monthly-timeA-minute', 'value'),
+            State('monthly-timeB-hour', 'value'),
+            State('monthly-timeB-minute', 'value'),
         ],
         prevent_initial_call=True
     )
     @cache.memoize(timeout=300)
-    def update_monthly_graphs(n, prod, start, end, mh, filters, vol_thr, pct_thr, median_pct, selected_measures, tA_h, tA_m, tB_h, tB_m):
+    def update_monthly_graphs(n, prod, start, end, mh, filters, vol_thr, pct_thr, median_pct, selected_measures, tA_h, tA_m, tB_h, tB_m,
+                              m_filters, m_vol, m_pct, m_tA_h, m_tA_m, m_tB_h, m_tB_m):
         """Callback to update monthly charts only."""
         print(f"\n[DEBUG] Monthly Callback triggered: n_clicks={n}")
         
@@ -2214,10 +2328,19 @@ def register_profile_callbacks(app, cache):
             load_dur = time.perf_counter() - start_time
             print(f"[PERF] Monthly data load took {load_dur:.2f}s")
             
+            # Prefer monthly-prefixed states if provided
+            active_filters = m_filters if m_filters else filters
+            vol_thr_active = m_vol if m_vol is not None else vol_thr
+            pct_thr_active = m_pct if m_pct is not None else pct_thr
+            tA_h_active = m_tA_h if m_tA_h is not None else tA_h
+            tA_m_active = m_tA_m if m_tA_m is not None else tA_m
+            tB_h_active = m_tB_h if m_tB_h is not None else tB_h
+            tB_m_active = m_tB_m if m_tB_m is not None else tB_m
+
             # Process data for monthly analysis
             filtered_minute = minute
-            if filters:
-                filtered_minute = apply_filters(filtered_minute, daily, filters, vol_thr, pct_thr)
+            if active_filters:
+                filtered_minute = apply_filters(filtered_minute, daily, active_filters, vol_thr_active, pct_thr_active)
             
             # Compute monthly statistics by month
             mc, mcm, mmed, mmode, moutlier, mv, mr, mrm, mmed_r, mmode_r, moutlier_r, mvr = compute_monthly_stats(filtered_minute, median_pct or 5.0)
@@ -2312,10 +2435,17 @@ def register_profile_callbacks(app, cache):
             load_dur = time.perf_counter() - start_time
             print(f"[PERF] Daily data load took {load_dur:.2f}s")
             
+            # Prefer daily-prefixed states if provided
+            try:
+                daily_filters_val = dash.callback_context.states.get('daily-filters.value', None)  # may not exist
+            except Exception:
+                daily_filters_val = None
+            active_filters = daily_filters_val if daily_filters_val else filters
+
             # Process daily data for day-of-week analysis
             filtered_minute = minute
-            if filters:
-                filtered_minute = apply_filters(filtered_minute, daily, filters, vol_thr, pct_thr)
+            if active_filters:
+                filtered_minute = apply_filters(filtered_minute, daily, active_filters, vol_thr, pct_thr)
             
             # Compute daily statistics by day of week
             dc, dcm, dmed, dmode, doutlier, dv, dr, drm, dmed_r, dmode_r, doutlier_r, dvr = compute_daily_stats(filtered_minute, median_pct or 5.0)
